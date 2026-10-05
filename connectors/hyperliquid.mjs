@@ -28,8 +28,8 @@ async function abstraction(user) {
   const hit = modes.get(user);
   if (hit && Date.now() - hit.at < 3_600_000) return hit.v;
   const v = await info({ type: 'userAbstraction', user }).catch(() => null);
-  modes.set(user, { at: Date.now(), v });
-  return v;
+  if (v) modes.set(user, { at: Date.now(), v }); // don't remember a failed lookup
+  return v ?? hit?.v ?? null;
 }
 
 export async function fetchAccount(acct) {
@@ -41,8 +41,12 @@ export async function fetchAccount(acct) {
     abstraction(user),
   ]);
   // Unified / portfolio-margin accounts keep collateral in spot: perp margin shows up as a
-  // spot "hold" and again inside the perp account value — count it once.
-  const unified = mode === 'unifiedAccount' || mode === 'portfolioMargin';
+  // spot "hold" and again inside the perp account value. If the mode lookup fails, the
+  // spot hold matching the perp margin used gives it away.
+  const usdc = (spot.balances ?? []).find((b) => b.coin === 'USDC');
+  const marginUsed = num(perp.marginSummary?.totalMarginUsed);
+  const unified = mode === 'unifiedAccount' || mode === 'portfolioMargin'
+    || (!mode && marginUsed > 0 && Math.abs(num(usdc?.hold) - marginUsed) <= marginUsed * 0.02);
 
   const positions = [];
   for (const { position: p } of perp.assetPositions ?? []) {
@@ -70,11 +74,10 @@ export async function fetchAccount(acct) {
     });
   }
 
-  // Unified: everything you own is the spot balance (margin included) plus open PnL — the
-  // perp account value double-counts fees already taken from spot. Classic accounts keep
-  // perp collateral separately, so its account value is added on top of spot.
-  const openPnl = positions.filter((p) => p.kind === 'perp').reduce((s, p) => s + p.upnl, 0);
-  const value = unified ? spotValue + openPnl : num(perp.marginSummary?.accountValue) + spotValue;
+  // Unified: the spot balance is marked to market — margin, open PnL, fees and funding are
+  // all already in it (it's what Hyperliquid itself reports as account value). Classic
+  // accounts keep perp collateral separately, so its account value is added on top of spot.
+  const value = unified ? spotValue : num(perp.marginSummary?.accountValue) + spotValue;
 
   // Fills: full history once per run, then just the latest batch.
   let trades = [];
