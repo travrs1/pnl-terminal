@@ -64,7 +64,7 @@ PnL history builds up while the app runs. Days it was off land on the next day i
 
 After connecting, the setup screen offers **Import past trades** (also under Settings → History):
 
-- **Backfill** pulls trade history from Coinbase, your wallets and Hyperliquid. It's safe to re-run.
+- **Backfill** pulls trade history from Coinbase, your wallets and Hyperliquid. It's safe to re-run. While the server is running it also catches up on its own every 10 minutes (last two days only), so new wallet trades appear without you doing anything.
 - **Rebuild daily history** estimates each day's close before you started tracking, replaying every account's transactions at that day's prices. Rebuilt days show dashed in the calendar.
 
 Or from a terminal:
