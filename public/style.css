@@ -13,6 +13,7 @@
   --pink-bg: rgba(255, 61, 139, 0.12);
   --yellow: #e8f53a;
   --blue: #5b8cff;
+  --ice: #9ddcff;
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -35,7 +36,7 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; font-we
 .top-row { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; padding-bottom: 10px; }
 .brand { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 7px; }
 .brand-icon { width: 28px; height: 28px; flex: none; margin-right: 3px; }
-.brand-icon rect { fill: var(--yellow); }
+.brand-icon rect { fill: var(--ice); }
 .brand-icon path { fill: none; stroke: #000; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .brand-icon circle { fill: #000; }
 .brand-name { color: var(--text); }
