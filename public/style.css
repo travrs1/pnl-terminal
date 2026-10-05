@@ -34,8 +34,8 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; font-we
 /* header */
 .top { border-bottom: 1px solid var(--line-2); position: sticky; top: 0; background: rgba(10, 10, 12, 0.85); backdrop-filter: blur(10px); z-index: 10; }
 .top-row { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; padding-bottom: 10px; }
-.brand { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 7px; }
-.brand-icon { width: 28px; height: 28px; flex: none; margin-right: 3px; overflow: visible;
+.brand { display: flex; align-items: center; gap: 10px; line-height: 1; }
+.brand-icon { width: 28px; height: 28px; flex: none; margin-right: 2px; overflow: visible;
   --g1: drop-shadow(0 0 1px #fff) drop-shadow(0 0 4px #7ff6ff) drop-shadow(0 0 10px #00d0ff) drop-shadow(0 0 22px #0090ff) drop-shadow(0 0 44px rgba(30, 90, 255, 0.85));
   --g2: drop-shadow(0 0 1px #fff) drop-shadow(0 0 6px #a6faff) drop-shadow(0 0 14px #00e0ff) drop-shadow(0 0 30px #00a0ff) drop-shadow(0 0 60px rgba(40, 100, 255, 0.95));
   filter: var(--g1);
@@ -51,8 +51,8 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; font-we
 .brand-icon rect { fill: url(#bolt); stroke: #c9fbff; stroke-width: 1.2; }
 .brand-icon path { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #9ff6ff); }
 .brand-icon circle { fill: #fff; filter: drop-shadow(0 0 3px #fff); }
-.brand-name { color: #3fbcff; text-shadow: 0 0 6px rgba(0, 170, 255, 0.55), 0 0 18px rgba(0, 120, 255, 0.35); }
-.brand-sub { color: var(--muted); font-weight: 500; }
+.brand-name { font: italic 800 23px var(--sans); letter-spacing: -0.035em; color: #4cc2ff; padding-right: 2px; }
+.brand-sub { font: 500 11.5px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); padding-left: 11px; border-left: 1px solid var(--line); align-self: center; line-height: 18px; }
 .demo-tag { margin-left: 14px; font: 600 11px var(--mono); color: #000; background: var(--yellow); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.08em; }
 .live-pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font: 600 13px var(--mono); letter-spacing: 0.06em; color: var(--green); }
 .live-pill .mono { color: var(--muted); font-weight: 500; }
@@ -269,7 +269,7 @@ input, select { background: var(--bg); border: 1px solid var(--line); color: var
 .setup[open] { display: flex; }
 .setup::backdrop { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
 .setup-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px; border-bottom: 1px solid var(--line-2); }
-.setup-head .brand { font-size: 17px; }
+.setup-head .brand-name { font-size: 19px; }
 .setup-head .brand-icon { width: 24px; height: 24px; }
 .setup-body { flex: 1; display: grid; grid-template-columns: 250px 1fr; min-height: 0; }
 .setup-list { border-right: 1px solid var(--line-2); padding: 18px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
