@@ -17,7 +17,7 @@ It runs **only on your computer**. There's no account to sign up for and no serv
 You need **[Node.js 22.9 or newer](https://nodejs.org)**. Nothing else: there are no dependencies to install.
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/pnl-terminal.git
+git clone https://github.com/travrs1/pnl-terminal.git
 cd pnl-terminal
 npm start
 ```

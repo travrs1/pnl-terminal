@@ -35,6 +35,7 @@ let prevToday = null;
 
 // ---------- tabs ----------
 function setTab(t) {
+  if (!document.getElementById(`tab-${t}`)) t = 'today'; // e.g. a tab remembered from an older version
   ui.tab = t;
   try { localStorage.setItem('pnl:tab', t); } catch {}
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
@@ -89,7 +90,7 @@ function render() {
   $('acctBtn').hidden = S.demo;
   renderHero();
   if (ui.tab === 'today') { renderPnl(); renderRecords(); renderAccounts(); }
-  if (ui.tab === 'book') { renderStatus(); renderBook(); renderExposure(); renderChart(); renderFeed(); }
+  if (ui.tab === 'positions') { renderStatus(); renderBook(); renderExposure(); renderChart(); renderFeed(); }
   if (ui.tab === 'trades') renderTrades();
   if (ui.tab === 'history') { renderCalendar(); renderDays(); }
   if (ui.tab === 'settings') renderSettings();
@@ -199,7 +200,7 @@ function renderAccounts() {
 }
 const dotCls = (a) => (a.status === 'setup' ? 'off' : a.status === 'error' ? (a.value != null ? 'stale' : 'err') : a.status === 'pending' ? 'stale' : '');
 
-// ---------- book ----------
+// ---------- positions ----------
 function renderStatus() {
   $('statusStrip').innerHTML = S.accounts.map((a) => `
     <div><div class="k"><span class="dot ${dotCls(a)}"></span>${esc(a.name)}</div>
@@ -328,7 +329,7 @@ function renderChart() {
   };
   rect.onmouseleave = () => { tip.hidden = true; svg.querySelector('#hoverLine')?.setAttribute('visibility', 'hidden'); };
 }
-window.addEventListener('resize', () => S && ui.tab === 'book' && renderChart());
+window.addEventListener('resize', () => S && ui.tab === 'positions' && renderChart());
 
 // ---------- trades feed ----------
 function renderFeed() {

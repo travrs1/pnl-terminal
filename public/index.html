@@ -7,12 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e8f53a'/><path d='M6 22l7-8 5 5 8-10' stroke='%23000' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23e8f53a'/><path d='M7 21.5l6-6.5 4.5 4.5L25 11' stroke='%23000' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='25' cy='11' r='2.2' fill='%23000'/></svg>">
 </head>
 <body>
   <header class="top">
     <div class="wrap top-row">
-      <div class="brand"><span class="brand-mark">pnl</span><span class="brand-sep">/</span><span class="brand-name">terminal</span><span id="demoTag" class="demo-tag" hidden>DEMO DATA</span></div>
+      <div class="brand"><svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"/><path d="M7 21.5l6-6.5 4.5 4.5L25 11"/><circle cx="25" cy="11" r="2.2"/></svg><span class="brand-name">PnL</span><span class="brand-sub">Terminal</span><span id="demoTag" class="demo-tag" hidden>DEMO DATA</span></div>
       <div class="top-right">
         <button id="acctBtn" class="btn ghost sm">Accounts &amp; keys</button>
         <div class="live-pill"><span class="dot"></span>LIVE <span id="clockTop" class="mono"></span></div>
@@ -20,7 +20,7 @@
     </div>
     <nav class="wrap tabs">
       <button data-tab="today" class="active">Today</button>
-      <button data-tab="book">The Book</button>
+      <button data-tab="positions">Positions</button>
       <button data-tab="trades">Trades</button>
       <button data-tab="history">History</button>
       <button data-tab="settings">Settings</button>
@@ -86,8 +86,8 @@
       </div>
     </section>
 
-    <!-- BOOK -->
-    <section id="tab-book" class="tab">
+    <!-- POSITIONS -->
+    <section id="tab-positions" class="tab">
       <div id="statusStrip" class="status-strip"></div>
       <div class="panel">
         <div class="row-between panel-head"><h3>Live PnL by ticker</h3><span class="mono muted small" id="bookSince"></span></div>
@@ -199,7 +199,7 @@
   </main>
 
   <dialog id="setup" class="setup" aria-label="Accounts and API keys">
-    <div class="setup-head"><span class="brand"><span class="brand-mark">pnl</span><span class="brand-sep">/</span><span class="brand-name">setup</span></span><button class="x" data-act="close" title="Close">✕</button></div>
+    <div class="setup-head"><span class="brand"><svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"/><path d="M7 21.5l6-6.5 4.5 4.5L25 11"/><circle cx="25" cy="11" r="2.2"/></svg><span class="brand-name">PnL</span><span class="brand-sub">Setup</span></span><button class="x" data-act="close" title="Close">✕</button></div>
     <div class="setup-body">
       <nav id="setupList" class="setup-list"></nav>
       <div id="setupPane" class="setup-pane"></div>
