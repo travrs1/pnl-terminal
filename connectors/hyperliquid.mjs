@@ -23,13 +23,26 @@ async function spotPrices() {
 
 const backfilled = new Set();
 
+const modes = new Map();
+async function abstraction(user) {
+  const hit = modes.get(user);
+  if (hit && Date.now() - hit.at < 3_600_000) return hit.v;
+  const v = await info({ type: 'userAbstraction', user }).catch(() => null);
+  modes.set(user, { at: Date.now(), v });
+  return v;
+}
+
 export async function fetchAccount(acct) {
   const user = acct.address.toLowerCase();
-  const [perp, spot, px] = await Promise.all([
+  const [perp, spot, px, mode] = await Promise.all([
     info({ type: 'clearinghouseState', user }),
     info({ type: 'spotClearinghouseState', user }),
     spotPrices(),
+    abstraction(user),
   ]);
+  // Unified / portfolio-margin accounts keep collateral in spot: perp margin shows up as a
+  // spot "hold" and again inside the perp account value — count it once.
+  const unified = mode === 'unifiedAccount' || mode === 'portfolioMargin';
 
   const positions = [];
   for (const { position: p } of perp.assetPositions ?? []) {
@@ -57,7 +70,11 @@ export async function fetchAccount(acct) {
     });
   }
 
-  const value = num(perp.marginSummary?.accountValue) + spotValue;
+  // Unified: everything you own is the spot balance (margin included) plus open PnL — the
+  // perp account value double-counts fees already taken from spot. Classic accounts keep
+  // perp collateral separately, so its account value is added on top of spot.
+  const openPnl = positions.filter((p) => p.kind === 'perp').reduce((s, p) => s + p.upnl, 0);
+  const value = unified ? spotValue + openPnl : num(perp.marginSummary?.accountValue) + spotValue;
 
   // Fills: full history once per run, then just the latest batch.
   let trades = [];
@@ -89,4 +106,25 @@ export async function fetchAccount(acct) {
       };
     }),
   };
+}
+
+// Deposits/withdrawals from Hyperliquid's own ledger, so moving money in and out of perps
+// is never counted as PnL. Internal moves (spot↔perp, sub-accounts) aren't flows.
+export async function flows(acct, cfg, sinceTs) {
+  const user = acct.address.toLowerCase();
+  const updates = await info({ type: 'userNonFundingLedgerUpdates', user, startTime: Math.floor(sinceTs) });
+  const out = [];
+  for (const u of updates ?? []) {
+    const d = u.delta ?? {};
+    let amount = 0, note = '';
+    if (d.type === 'deposit') { amount = num(d.usdc); note = 'Deposit to Hyperliquid'; }
+    else if (d.type === 'withdraw') { amount = -num(d.usdc) - num(d.fee); note = 'Withdrawal from Hyperliquid'; }
+    else if (d.type === 'send' || d.type === 'spotTransfer') {
+      const usd = num(d.usdcValue ?? d.amount);
+      if (d.destination?.toLowerCase() === user && d.user?.toLowerCase() !== user) { amount = usd; note = `${d.token ?? 'USDC'} received on Hyperliquid`; }
+      else if (d.user?.toLowerCase() === user && d.destination?.toLowerCase() !== user) { amount = -usd; note = `${d.token ?? 'USDC'} sent from Hyperliquid`; }
+    }
+    if (amount) out.push({ ts: u.time, amount, note, ext_id: `hl-ledger:${u.hash}`, source: 'hyperliquid' });
+  }
+  return out;
 }

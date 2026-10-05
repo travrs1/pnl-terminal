@@ -58,6 +58,13 @@ function runJob(name, args) {
   p.on('close', (code) => Object.assign(job, { ended: Date.now(), code }));
   return job;
 }
+// Wallet trades (Fomo, Robinhood Wallet…) have no live feed, so every 10 minutes a
+// catch-up backfill of the last two days runs in the background (skipped if a job is busy).
+setInterval(() => {
+  if (DEMO || (job && !job.ended) || !cfg.accounts.some((a) => a.type === 'wallet')) return;
+  try { runJob('auto-sync (last 2 days)', ['backfill.mjs', '--recent']); } catch { /* busy */ }
+}, 600_000).unref();
+
 const readText = (req) => new Promise((ok) => { let s = ''; req.on('data', (c) => (s += c)); req.on('end', () => ok(s)); });
 
 const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };

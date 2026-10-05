@@ -14,10 +14,14 @@ import { walletSignatures } from './lib/solana.mjs';
 
 const cfg = JSON.parse(readFileSync(new URL('accounts.json', import.meta.url), 'utf8'));
 // Trades go back further than the PnL history so positions opened earlier still get a cost basis.
-const START = Date.parse(process.env.BACKFILL_FROM || cfg.tradesFrom || cfg.historyStart || `${new Date().getFullYear()}-01-01T00:00:00`);
+// `--recent` is the server's 10-minute catch-up: only the last two days, nothing deleted.
+const RECENT = process.argv.includes('--recent');
+const START = RECENT ? Date.now() - 2 * 864e5
+  : Date.parse(process.env.BACKFILL_FROM || cfg.tradesFrom || cfg.historyStart || `${new Date().getFullYear()}-01-01T00:00:00`);
 const HISTORY_START = Date.parse(cfg.historyStart || cfg.tradesFrom);
 const tz = cfg.timezone;
 const db = openDb(new URL('data/pnl.db', import.meta.url).pathname);
+const OWN = new Set(cfg.accounts.flatMap((a) => [...(a.evm ?? []), ...(a.solana ?? [])]).map((x) => x.toLowerCase()));
 const STABLES = new Set(['USD', 'USDC', 'USDT', 'DAI', 'PYUSD', 'USDS', 'USDE']);
 const log = (...a) => console.log(new Date().toLocaleTimeString(), ...a);
 const summary = {};
@@ -144,7 +148,7 @@ async function solana(acct, addr) {
       tokenUsd: (m) => tokenUsd('solana', m, d.ts),
     }));
   }
-  db.addTrades(trades);
+  db.addTrades(await renameLookalikes(trades, 'sol'));
   bump(`${acct.name} trades`, trades.filter((t) => t.kind === 'spot').length);
   log(`  → ${trades.length} rows`);
 }
@@ -178,7 +182,8 @@ async function classify(legs, c) {
   const quotes = legs.filter((l) => c.isQuote(l.mint));
   const tokens = legs.filter((l) => !c.isQuote(l.mint));
   const row = (l, side, notional, extra = {}) => ({
-    ext_id: `${c.id}:${l.mint}`, ts: c.ts, account: c.account, venue: c.venue, symbol: c.symbol(l.mint),
+    // Account in the id: a transfer between two of your wallets is one tx seen from both sides.
+    ext_id: `${c.id}:${l.mint}:${c.account}`, ts: c.ts, account: c.account, venue: c.venue, symbol: c.symbol(l.mint),
     side, size: Math.abs(l.d), price: notional != null ? notional / Math.abs(l.d) : null, notional, kind: 'spot', ...extra,
   });
   const out = [];
@@ -304,7 +309,10 @@ async function evmChain(acct, addr, chain) {
     // Sold for native ETH: the ETH comes back as an internal transfer that has no log —
     // if we signed a tx to a contract that only sent our tokens out, call it a sell.
     const toContract = tx.to && (await evmRpc(url, 'eth_getCode', [tx.to, 'latest'])) !== '0x';
-    if (toContract && tx.from.toLowerCase() === me) {
+    // A plain transfer to one of your own wallets also "calls a contract" (the token's).
+    const toOwnWallet = rc.logs.some((l) => l.topics[0] === TRANSFER && l.topics.length >= 3
+      && '0x' + l.topics[1].slice(26) === me && OWN.has('0x' + l.topics[2].slice(26)));
+    if (toContract && !toOwnWallet && tx.from.toLowerCase() === me) {
       rows = rows.map((r) => (r.kind === 'transfer' && r.side === 'SEND' ? { ...r, kind: 'spot', side: 'SELL', dir: 'Swap', note: `for ${native} (est. price)` } : r));
     }
     trades.push(...rows);
@@ -343,7 +351,7 @@ async function hyperliquidDaily(acct) {
       if (Math.abs(flow) >= 1) db.addFlow({ ts: end, day: d, account: acct.id, amount: flow, note: 'Hyperliquid deposit/withdrawal', source: 'hyperliquid', ext_id: `hl-day:${d}` });
       n++;
     }
-    prev = { value, pnl };
+    if (value > 0 || prev) prev = { value, pnl }; // nothing before the account was funded
   }
   log(`Hyperliquid: rebuilt ${n} days of history`);
 }
@@ -373,12 +381,21 @@ export function reclassify() {
     upd.run(r.side === 'RECEIVE' ? 'BUY' : 'SELL', 'cross-chain · est. price', r.ext_id);
     n++;
   }
-  db.raw.prepare('DELETE FROM trades WHERE ts < ? AND ext_id NOT LIKE ?').run(START, 'hl:%');
+  if (!RECENT) db.raw.prepare('DELETE FROM trades WHERE ts < ? AND ext_id NOT LIKE ?').run(START, 'hl:%');
   log(`Reclassified ${n} wallet transfers as swaps; ${internal.size / 2} internal moves matched`);
 }
 
 // Same rule as the live wallet connector: a "BTC" memecoin isn't BTC.
 const MAJORS = ['BTC', 'ETH', 'SOL', 'BNB', 'ZEC', 'NEAR', 'HYPE', 'XRP', 'DOGE'];
+// Applied as rows are written, so cost-basis overrides for the real asset never touch them.
+async function renameLookalikes(rows, chain) {
+  for (const r of rows) {
+    if (!MAJORS.includes(r.symbol) || !r.price) continue;
+    const ref = await majorUsd(r.symbol, r.ts);
+    if (ref && Math.abs(r.price / ref - 1) > 0.2) r.symbol = `${r.symbol}·${chain}`;
+  }
+  return rows;
+}
 async function disambiguate() {
   const rows = db.raw.prepare(`SELECT ext_id, ts, symbol, price, venue FROM trades WHERE venue LIKE '%·%' AND symbol IN (${MAJORS.map(() => '?').join(',')})`).all(...MAJORS);
   const upd = db.raw.prepare('UPDATE trades SET symbol = ? WHERE ext_id = ?');
