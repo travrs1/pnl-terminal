@@ -35,7 +35,11 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; font-we
 .top { border-bottom: 1px solid var(--line-2); position: sticky; top: 0; background: rgba(10, 10, 12, 0.85); backdrop-filter: blur(10px); z-index: 10; }
 .top-row { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; padding-bottom: 10px; }
 .brand { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 7px; }
-.brand-icon { width: 28px; height: 28px; flex: none; margin-right: 3px; }
+.brand-icon { width: 28px; height: 28px; flex: none; margin-right: 3px; overflow: visible; border-radius: 8px;
+  filter: drop-shadow(0 0 4px rgba(157, 220, 255, 0.85)) drop-shadow(0 0 12px rgba(157, 220, 255, 0.55)) drop-shadow(0 0 24px rgba(157, 220, 255, 0.3));
+  animation: ice-glow 3.2s ease-in-out infinite; }
+@keyframes ice-glow { 50% { filter: drop-shadow(0 0 6px rgba(157, 220, 255, 1)) drop-shadow(0 0 16px rgba(157, 220, 255, 0.7)) drop-shadow(0 0 32px rgba(157, 220, 255, 0.4)); } }
+@media (prefers-reduced-motion: reduce) { .brand-icon { animation: none; } }
 .brand-icon rect { fill: var(--ice); }
 .brand-icon path { fill: none; stroke: #000; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .brand-icon circle { fill: #000; }
