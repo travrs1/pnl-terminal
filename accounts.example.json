@@ -1,0 +1,41 @@
+{
+  "timezone": "America/New_York",
+  "historyStart": "2026-01-01T00:00:00",
+  "tradesFrom": "2026-01-01T00:00:00",
+  "costBasis": {},
+  "dustUsd": 1,
+  "accounts": [
+    { "id": "coinbase", "name": "Coinbase", "type": "coinbase", "excludeCash": false },
+    { "id": "strike", "name": "Strike", "type": "strike" },
+    {
+      "id": "wallet",
+      "name": "Wallet",
+      "type": "wallet",
+      "evm": ["0xYOUR_EVM_ADDRESS"],
+      "chains": ["eth", "base", "arbitrum"],
+      "solana": ["YOUR_SOLANA_ADDRESS"],
+      "bitcoin": [],
+      "tokens": [
+        { "chain": "bsc", "symbol": "TOKEN", "address": "0xTOKEN_CONTRACT_ON_BNB_CHAIN" }
+      ]
+    },
+    { "id": "hyperliquid", "name": "Hyperliquid", "type": "hyperliquid", "address": "0xYOUR_HYPERLIQUID_ADDRESS" },
+    {
+      "id": "schwab",
+      "name": "Schwab",
+      "type": "schwab",
+      "holdings": [{ "symbol": "AAPL", "qty": 10, "avg": 180 }],
+      "cash": 0
+    },
+    {
+      "id": "brokerage",
+      "name": "Other brokerage",
+      "type": "manual",
+      "holdings": [
+        { "symbol": "VTI", "qty": 25, "avg": 240 },
+        { "symbol": "ETH", "qty": 1.5, "kind": "crypto" }
+      ],
+      "cash": 500
+    }
+  ]
+}

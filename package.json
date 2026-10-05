@@ -1,0 +1,27 @@
+{
+  "name": "pnl-terminal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted live PnL dashboard for exchanges, brokers and crypto wallets",
+  "license": "MIT",
+  "keywords": [
+    "pnl",
+    "portfolio",
+    "trading",
+    "crypto",
+    "coinbase",
+    "hyperliquid",
+    "dashboard"
+  ],
+  "scripts": {
+    "start": "node --no-warnings --env-file-if-exists=.env server.mjs",
+    "backfill": "node --no-warnings --env-file-if-exists=.env backfill.mjs",
+    "rebuild": "node --no-warnings --env-file-if-exists=.env rebuild.mjs",
+    "import": "node --no-warnings import-csv.mjs",
+    "demo": "DEMO=1 NO_OPEN=1 node --no-warnings --env-file-if-exists=.env server.mjs"
+  },
+  "engines": {
+    "node": ">=22.9"
+  }
+}

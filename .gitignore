@@ -1,0 +1,11 @@
+# Your keys, accounts and history: never commit these
+.env
+.env.*
+!.env.example
+accounts.json
+data/
+*.tmp
+
+node_modules/
+.DS_Store
+.claude/

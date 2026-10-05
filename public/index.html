@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PnL Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e8f53a'/><path d='M6 22l7-8 5 5 8-10' stroke='%23000' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <div class="brand"><span class="brand-mark">pnl</span><span class="brand-sep">/</span><span class="brand-name">terminal</span><span id="demoTag" class="demo-tag" hidden>DEMO DATA</span></div>
+      <div class="top-right">
+        <button id="acctBtn" class="btn ghost sm">Accounts &amp; keys</button>
+        <div class="live-pill"><span class="dot"></span>LIVE <span id="clockTop" class="mono"></span></div>
+      </div>
+    </div>
+    <nav class="wrap tabs">
+      <button data-tab="today" class="active">Today</button>
+      <button data-tab="book">The Book</button>
+      <button data-tab="trades">Trades</button>
+      <button data-tab="history">History</button>
+      <button data-tab="settings">Settings</button>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <div id="welcome" class="welcome" hidden>
+      <div><b>No accounts connected yet.</b> Add an exchange, broker or wallet to start tracking. Read-only keys and wallet addresses only; everything stays on this computer.</div>
+      <button class="btn" data-open-setup>Connect an account</button>
+    </div>
+    <!-- TODAY -->
+    <section id="tab-today" class="tab active">
+      <div class="hero">
+        <div class="hero-left">
+          <div class="live-pill sm"><span class="dot"></span>LIVE <span id="clock" class="mono"></span></div>
+          <div id="badge" class="badge">POSITIVE PNL.</div>
+          <div class="eyebrow">P&amp;L TODAY · SINCE 00:00 <span id="tzAbbr"></span> <span class="chip">REALTIME</span></div>
+          <div class="big-row">
+            <div id="todayPnl" class="big mono">—</div>
+            <div id="todayPct" class="pct-pill mono">—</div>
+          </div>
+          <div class="sub-line">
+            <span>NAV <b id="nav" class="mono">—</b></span>
+            <span>Live run PnL <b id="runPnl" class="mono">—</b> <span id="runSince" class="muted"></span></span>
+          </div>
+          <div id="runBreakdown" class="run-breakdown"></div>
+          <div class="fine">Day runs from midnight local time. Money moved in or out of the portfolio isn't counted as PnL.</div>
+          <div id="sinceChecked" class="since"></div>
+        </div>
+        <div class="hero-right">
+          <svg id="spark" class="spark" viewBox="0 0 260 90" preserveAspectRatio="none"></svg>
+          <div id="sparkLabel" class="spark-label mono"></div>
+        </div>
+      </div>
+
+      <div class="section-rule">
+        <div class="row-between"><h3>PnL</h3><span class="mono muted small" id="pnlSince"></span></div>
+        <div id="pnlCards" class="cards4"></div>
+        <div class="table-scroll"><table class="book pnl-table">
+          <thead><tr><th>Account</th><th class="r">Value</th><th class="r">Today</th><th class="r">Unrealized</th></tr></thead>
+          <tbody id="pnlBody"></tbody>
+        </table></div>
+      </div>
+
+      <div class="section-rule">
+        <div class="row-between">
+          <h3>Win rate</h3>
+          <div id="winText" class="mono win-text"></div>
+        </div>
+        <div class="winbar"><div id="winFill"></div></div>
+        <div class="fine">Closed round trips across every venue: a trade completes when the position is sold back to flat. Spot uses FIFO cost basis.</div>
+      </div>
+
+      <div class="section-rule">
+        <div class="row-between"><h3>Streaks &amp; records</h3><span class="mono muted small" id="recNote">From every day this run</span></div>
+        <div id="records" class="cards6"></div>
+      </div>
+
+      <div class="section-rule">
+        <div class="row-between"><h3>Accounts</h3><span class="mono muted small" id="acctCount"></span></div>
+        <div id="accounts" class="acct-grid"></div>
+      </div>
+    </section>
+
+    <!-- BOOK -->
+    <section id="tab-book" class="tab">
+      <div id="statusStrip" class="status-strip"></div>
+      <div class="panel">
+        <div class="row-between panel-head"><h3>Live PnL by ticker</h3><span class="mono muted small" id="bookSince"></span></div>
+        <div class="table-scroll">
+          <table class="book tickers">
+            <thead><tr><th>Ticker</th><th class="r">Avg price</th><th class="r">Last price</th><th class="r">Mkt value</th><th class="r">Today</th><th class="r">Open PnL</th></tr></thead>
+            <tbody id="bookBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="two-col">
+        <div>
+          <div class="row-between"><h3>Exposure</h3><span class="mono muted small">Biggest holdings, share of NAV</span></div>
+          <div id="exposure" class="exposure"></div>
+          <div class="row-between" style="margin-top:36px"><h3>Performance</h3><span class="mono muted small">Full run</span></div>
+          <div class="chart-ctl">
+            <div class="seg" id="modeSeg"><button data-mode="pnl" class="on">Run PnL</button><button data-mode="value">Portfolio value</button></div>
+            <div id="chartHead" class="mono chart-head"></div>
+          </div>
+          <div class="seg ghost" id="rangeSeg"><button data-range="1D">1D</button><button data-range="1W">1W</button><button data-range="1M">1M</button><button data-range="ALL" class="on">ALL</button></div>
+          <div class="chart-box"><svg id="chart" class="chart"></svg><div id="chartTip" class="chart-tip" hidden></div></div>
+        </div>
+        <div class="panel feed-panel">
+          <div class="row-between"><h3>Trades</h3><span class="mono muted small">Live fills · newest first</span></div>
+          <div id="feed" class="feed"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRADES -->
+    <section id="tab-trades" class="tab">
+      <div class="row-between"><h3>Closed trades</h3><span class="mono muted small" id="tradesNote"></span></div>
+      <div id="tradeCards" class="cards4" style="margin-top:20px"></div>
+      <div class="trade-filters">
+        <div class="seg ghost" id="tradeAcct"></div>
+        <div class="seg ghost" id="tradeResult"><button data-r="all" class="on">All</button><button data-r="win">Wins</button><button data-r="loss">Losses</button></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="table-scroll">
+          <table class="book closed-trades">
+            <thead><tr>
+              <th data-sort="closed">Closed</th><th data-sort="symbol">Token</th><th data-sort="venue">Where</th><th data-sort="held" class="r">Held</th>
+              <th data-sort="cost" class="r">Cost</th><th data-sort="proceeds" class="r">Proceeds</th><th data-sort="pnl" class="r">PnL</th><th data-sort="pct" class="r">%</th>
+            </tr></thead>
+            <tbody id="tradesBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="fine">A trade is a round trip: it opens when you buy into a token and closes when you sell back to (nearly) zero. Cost is FIFO. Cross-chain trades use Relay's USD amounts; "est." means a leg was priced at market because the venue didn't report a USD value.</p>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="tab-history" class="tab">
+      <div class="row-between"><h3>Daily PnL calendar</h3><span class="mono muted small" id="calLegend"></span></div>
+      <div id="calendar" class="calendar"></div>
+      <div class="section-rule">
+        <h3>Every day</h3>
+        <div class="table-scroll"><table class="book days">
+          <thead><tr><th>Day</th><th class="r">PnL</th><th class="r">Run PnL</th><th class="r">Portfolio value</th></tr></thead>
+          <tbody id="daysBody"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="tab-settings" class="tab">
+      <div class="panel setup-panel">
+        <div><h3>Accounts &amp; API keys</h3><p class="fine">Add or remove exchanges, brokers and wallets, paste API keys, and test each connection.</p></div>
+        <button class="btn" data-open-setup>Manage accounts</button>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <h3>Log a deposit / withdrawal</h3>
+          <p class="fine">Only money entering or leaving your whole portfolio (bank → Coinbase, Schwab → bank). Moves between your own accounts net out on their own — don't log those.</p>
+          <form id="flowForm" class="flow-form">
+            <label>Date <input type="date" name="date" required></label>
+            <label>Amount (USD) <input type="number" step="0.01" name="amount" placeholder="5000 or -2000" required></label>
+            <label>Account <select name="account"></select></label>
+            <label>Note <input type="text" name="note" placeholder="ACH from Chase"></label>
+            <button type="submit" class="btn">Add</button>
+          </form>
+          <table class="book flows"><thead><tr><th>Day</th><th>Account</th><th class="r">Amount</th><th>Note</th><th></th></tr></thead><tbody id="flowsBody"></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Connections</h3>
+          <div id="connList" class="conn-list"></div>
+          <div id="schwabBox" class="schwab-box"></div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <h3>History</h3>
+          <p class="fine"><b>Backfill</b> pulls trades from Coinbase, your wallets and Hyperliquid (a few minutes; Solana wallets take longest). <b>Rebuild</b> re-estimates daily closes before live tracking started. Run backfill first.</p>
+          <div class="job-btns"><button class="btn ghost" data-job="backfill">Run backfill</button><button class="btn ghost" data-job="rebuild">Rebuild daily history</button></div>
+          <pre id="jobOut" class="job-out" hidden></pre>
+        </div>
+        <div class="panel">
+          <h3>Import a CSV</h3>
+          <p class="fine">For venues whose API can't read history (e.g. Strike: app → Settings → Reports/Statements → export transactions). Preview first, then import.</p>
+          <div class="flow-form">
+            <label>Account <select id="csvAccount"></select></label>
+            <label>File <input type="file" id="csvFile" accept=".csv,text/csv"></label>
+            <button class="btn ghost" id="csvPreview">Preview</button>
+            <button class="btn" id="csvImport">Import</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="setup" class="setup" aria-label="Accounts and API keys">
+    <div class="setup-head"><span class="brand"><span class="brand-mark">pnl</span><span class="brand-sep">/</span><span class="brand-name">setup</span></span><button class="x" data-act="close" title="Close">✕</button></div>
+    <div class="setup-body">
+      <nav id="setupList" class="setup-list"></nav>
+      <div id="setupPane" class="setup-pane"></div>
+    </div>
+    <div id="setupFoot" class="setup-foot"></div>
+  </dialog>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
