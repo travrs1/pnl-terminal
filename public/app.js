@@ -301,14 +301,14 @@ function renderChart() {
   const xt = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (pts.length - 1)));
   for (const i of new Set(xt)) grid += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle">${pts[i].label}</text>`;
   const last = pts.at(-1);
-  svg.innerHTML = `<defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#e8f53a" stop-opacity=".28"/><stop offset="1" stop-color="#e8f53a" stop-opacity="0"/></linearGradient></defs>
+  svg.innerHTML = `<defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3db6ff" stop-opacity=".28"/><stop offset="1" stop-color="#3db6ff" stop-opacity="0"/></linearGradient></defs>
     ${grid}
     ${ui.mode === 'pnl' ? `<line x1="${L}" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2a2a30"/>` : ''}
     <line x1="${L}" x2="${W}" y1="${Y(peak)}" y2="${Y(peak)}" stroke="#555" stroke-dasharray="5 5"/>
     <text x="${L + 6}" y="${Y(peak) + 16}">Peak ${ui.mode === 'pnl' ? 'PnL' : 'value'} ${short(peak)}</text>
     <path d="${area}" fill="url(#ga)"/>
-    <path d="${line}" fill="none" stroke="#e8f53a" stroke-width="2.5" stroke-linejoin="round"/>
-    <circle cx="${X(pts.length - 1)}" cy="${Y(last.v)}" r="5" fill="#e8f53a"/>
+    <path d="${line}" fill="none" stroke="#3db6ff" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="${X(pts.length - 1)}" cy="${Y(last.v)}" r="5" fill="#3db6ff"/>
     <circle cx="${X(peakI)}" cy="${Y(peak)}" r="0"/>
     <line id="hoverLine" y1="${T}" y2="${H - B}" stroke="#666" stroke-dasharray="2 3" visibility="hidden"/>
     <rect x="${L}" y="0" width="${W - L}" height="${H}" fill="transparent" id="hoverRect"/>`;
