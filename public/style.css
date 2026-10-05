@@ -39,23 +39,19 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; font-we
   --g1: drop-shadow(0 0 1px #fff) drop-shadow(0 0 4px #7ff6ff) drop-shadow(0 0 10px #00d0ff) drop-shadow(0 0 22px #0090ff) drop-shadow(0 0 44px rgba(30, 90, 255, 0.85));
   --g2: drop-shadow(0 0 1px #fff) drop-shadow(0 0 6px #a6faff) drop-shadow(0 0 14px #00e0ff) drop-shadow(0 0 30px #00a0ff) drop-shadow(0 0 60px rgba(40, 100, 255, 0.95));
   filter: var(--g1);
-  animation: electric 4s linear infinite; }
-/* Steady hum with the odd neon-sign flicker. */
-@keyframes electric {
-  0%, 100% { filter: var(--g1); }
-  40% { filter: var(--g2); }
-  62% { filter: var(--g1); opacity: 1; }
-  63% { filter: drop-shadow(0 0 2px #00d0ff); opacity: 0.55; }
-  64% { filter: var(--g2); opacity: 1; }
-  66% { filter: drop-shadow(0 0 3px #00d0ff); opacity: 0.7; }
-  67% { filter: var(--g2); opacity: 1; }
-  80% { filter: var(--g1); }
+  animation: hum 4s ease-in-out infinite, flicker 30s linear infinite; }
+@keyframes hum { 50% { filter: var(--g2); } }
+/* A quick neon-sign flicker about every 30 seconds. */
+@keyframes flicker {
+  0%, 95.9%, 96.3%, 96.7%, 97.1%, 100% { opacity: 1; }
+  96.1% { opacity: 0.45; }
+  96.9% { opacity: 0.65; }
 }
 @media (prefers-reduced-motion: reduce) { .brand-icon { animation: none; } }
 .brand-icon rect { fill: url(#bolt); stroke: #c9fbff; stroke-width: 1.2; }
 .brand-icon path { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #9ff6ff); }
 .brand-icon circle { fill: #fff; filter: drop-shadow(0 0 3px #fff); }
-.brand-name { color: var(--text); }
+.brand-name { color: #3fbcff; text-shadow: 0 0 6px rgba(0, 170, 255, 0.55), 0 0 18px rgba(0, 120, 255, 0.35); }
 .brand-sub { color: var(--muted); font-weight: 500; }
 .demo-tag { margin-left: 14px; font: 600 11px var(--mono); color: #000; background: var(--yellow); padding: 3px 8px; border-radius: 4px; letter-spacing: 0.08em; }
 .live-pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font: 600 13px var(--mono); letter-spacing: 0.06em; color: var(--green); }
