@@ -22,8 +22,18 @@ const RPC = {
   bsc: { urls: ['https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc.rpc.blxrbdn.com'], native: 'BNB' },
 };
 
+// Blockscout hosts sometimes sit behind a Cloudflare challenge that blocks every API call.
+// Then fall back to RPC like the chains above (no token discovery, only listed/Relay tokens).
+const RPC_FALLBACK = {
+  eth: { urls: ['https://ethereum-rpc.publicnode.com', 'https://eth.llamarpc.com'], native: 'ETH' },
+  base: { urls: ['https://mainnet.base.org', 'https://base-rpc.publicnode.com'], native: 'ETH' },
+  arbitrum: { urls: ['https://arb1.arbitrum.io/rpc', 'https://arbitrum-one-rpc.publicnode.com'], native: 'ETH' },
+  optimism: { urls: ['https://mainnet.optimism.io', 'https://optimism-rpc.publicnode.com'], native: 'ETH' },
+  polygon: { urls: ['https://polygon-rpc.com', 'https://polygon-bor-rpc.publicnode.com'], native: 'POL' },
+};
+
 async function rpcChain(addr, chain, tokens, dust) {
-  const { urls, native } = RPC[chain];
+  const { urls, native } = RPC[chain] ?? RPC_FALLBACK[chain];
   const list = tokens.filter((t) => t.chain === chain);
   const owner = addr.toLowerCase().replace(/^0x/, '').padStart(64, '0');
   const calls = [
@@ -149,7 +159,12 @@ export async function fetchAccount(acct, cfg) {
   const listed = acct.tokens ?? [];
   const tokens = [...listed, ...relayTokens(acct).filter((t) => !listed.some((l) => l.chain === t.chain && l.address.toLowerCase() === t.address.toLowerCase()))];
   for (const addr of acct.evm ?? []) {
-    for (const chain of acct.chains ?? ['eth', 'base']) jobs.push(RPC[chain] ? rpcChain(addr, chain, tokens, dust) : evm(addr, chain, dust));
+    for (const chain of acct.chains ?? ['eth', 'base']) jobs.push(RPC[chain] ? rpcChain(addr, chain, tokens, dust)
+      : evm(addr, chain, dust).catch((e) => {
+        if (!RPC_FALLBACK[chain]) throw e;
+        console.warn(`[wallet] ${chain} blockscout failed (${e.message.slice(0, 40)}), using RPC`);
+        return rpcChain(addr, chain, tokens, dust);
+      }));
   }
   for (const addr of acct.solana ?? []) jobs.push(solana(addr, dust));
   for (const addr of acct.bitcoin ?? []) jobs.push(bitcoin(addr));
