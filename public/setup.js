@@ -43,7 +43,10 @@ const TYPES = {
   },
   hyperliquid: {
     label: 'Hyperliquid', icon: 'HL', blurb: 'Perps and spot. Only needs your wallet address.',
-    fields: [{ k: 'address', label: 'Wallet address', ph: '0x…', req: true, check: (v) => EVM_RE.test(v) || 'Enter a 0x… address (42 characters)' }],
+    fields: [
+      { k: 'address', label: 'Wallet address', ph: '0x…', req: true, check: (v) => EVM_RE.test(v) || 'Enter a 0x… address (42 characters)' },
+      { k: 'leverage', t: 'num', label: 'Leverage you trade at', ph: '1', help: 'Closed-trade % is measured on margin (notional ÷ leverage). Leave blank for 1x.', check: (v) => Number(v) >= 1 || 'Leverage must be 1 or more' },
+    ],
     steps: [
       'Copy the address of the wallet you trade with on Hyperliquid (the <code>0x…</code> address in MetaMask, Rabby, etc.).',
       'Paste it below. No key needed, because Hyperliquid account data is public.',

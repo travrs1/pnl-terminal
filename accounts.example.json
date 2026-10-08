@@ -19,7 +19,7 @@
         { "chain": "bsc", "symbol": "TOKEN", "address": "0xTOKEN_CONTRACT_ON_BNB_CHAIN" }
       ]
     },
-    { "id": "hyperliquid", "name": "Hyperliquid", "type": "hyperliquid", "address": "0xYOUR_HYPERLIQUID_ADDRESS" },
+    { "id": "hyperliquid", "name": "Hyperliquid", "type": "hyperliquid", "address": "0xYOUR_HYPERLIQUID_ADDRESS", "leverage": 10 },
     {
       "id": "schwab",
       "name": "Schwab",
