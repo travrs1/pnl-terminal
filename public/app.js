@@ -443,10 +443,15 @@ async function loadSchwab() {
     <button class="btn" id="schwabSubmit">Connect</button> <span id="schwabMsg" class="small"></span>`;
   $('schwabLogin').onclick = async () => window.open((await fetch('/api/schwab/authurl').then((r) => r.json())).url, '_blank');
   $('schwabSubmit').onclick = async () => {
+    // A code is single-use; a second click would replace "Connected" with invalid_grant.
+    if ($('schwabSubmit').disabled) return;
+    $('schwabSubmit').disabled = true;
     const r = await api('/api/schwab/code', { method: 'POST', body: JSON.stringify({ code: $('schwabCode').value }) });
     $('schwabMsg').textContent = r.ok ? 'Connected ✓' : `Failed: ${(await r.json()).error}`;
-    if (r.ok) loadSchwab();
+    if (r.ok) loadSchwab(); else $('schwabSubmit').disabled = false;
   };
+  // The auth code expires in ~30s, so connect as soon as a callback URL is pasted.
+  $('schwabCode').onpaste = () => setTimeout(() => { if ($('schwabCode').value.includes('code=')) $('schwabSubmit').click(); });
 }
 
 // ---------- jobs + CSV import ----------
