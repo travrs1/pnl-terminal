@@ -89,7 +89,7 @@ function render() {
   $('welcome').hidden = !S.needsSetup;
   $('acctBtn').hidden = S.demo;
   renderHero();
-  if (ui.tab === 'today') { renderPnl(); renderRecords(); renderAccounts(); }
+  if (ui.tab === 'today') { renderMilestones(); renderPnl(); renderRecords(); renderAccounts(); }
   if (ui.tab === 'positions') { renderStatus(); renderBook(); renderExposure(); renderChart(); renderFeed(); }
   if (ui.tab === 'trades') renderTrades();
   if (ui.tab === 'history') { renderCalendar(); renderDays(); }
@@ -158,12 +158,52 @@ function renderPnl() {
     card('Today', money(S.todayPnl, { sign: true }), `${pct(S.todayPct)} on the day`, cls(S.todayPnl)),
     card('Run PnL', money(r.totalPnl, { sign: true }), `${pct(r.totalPct)} · deposits excluded`, cls(r.totalPnl)),
   ].join('');
-  const rows = S.accounts.filter((a) => a.value != null);
+  const rows = byValue(S.accounts.filter((a) => a.value != null));
   $('pnlBody').innerHTML = rows.map((a) => {
     const un = u.byAccount[a.id];
     return `<tr><td>${esc(a.name)}</td><td class="r">${money(a.value)}</td><td class="r ${cls(a.today)}">${money(a.today, { sign: true })}</td>
       <td class="r ${cls(un)}">${un == null ? '<span class="muted">—</span>' : money(un, { sign: true })}</td></tr>`;
   }).join('') + `<tr class="total"><td>Total</td><td class="r">${money(S.nav)}</td><td class="r ${cls(S.todayPnl)}">${money(S.todayPnl, { sign: true })}</td><td class="r ${cls(u.total)}">${money(u.total, { sign: true })}</td></tr>`;
+}
+
+// ---------- milestones ----------
+const DEFAULT_MILESTONES = [75_000, 100_000, 150_000, 200_000];
+const kFmt = (n) => (n >= 1e6 ? `$${+(n / 1e6).toFixed(2)}M` : `$${+(n / 1e3).toFixed(1)}K`);
+let msSeen = null;
+try { const v = localStorage.getItem('pnl:msHit'); if (v != null) msSeen = Number(v); } catch {}
+
+// The configured ladder, then past the last one keep going in the same step (200K → 250K → 300K…).
+// A milestone counts as hit the first day NAV closed at or above it (or right now, live).
+function milestones() {
+  const list = [...new Set((Array.isArray(S.milestones) && S.milestones.length ? S.milestones : DEFAULT_MILESTONES).map(Number).filter((n) => n > 0))].sort((a, b) => a - b);
+  const step = list.length > 1 ? list.at(-1) - list.at(-2) : list[0];
+  const peak = Math.max(S.nav || 0, ...S.days.map((d) => d.value || 0));
+  while (list.at(-1) <= peak) list.push(list.at(-1) + step);
+  return list.map((target) => ({
+    target,
+    hit: peak >= target ? (S.days.find((d) => d.value >= target)?.day ?? S.today) : null,
+  }));
+}
+
+function renderMilestones() {
+  const all = milestones();
+  const i = all.findIndex((m) => !m.hit);
+  const cur = all[i];
+  const hitCount = i;
+  const progress = Math.max(0, Math.min(1, S.nav / cur.target));
+  $('msTarget').textContent = kFmt(cur.target);
+  $('msPct').textContent = `${(progress * 100).toFixed(1)}%`;
+  $('msLeft').textContent = `${money(cur.target - S.nav)} to go`;
+  $('msFill').style.width = `${(progress * 100).toFixed(2)}%`;
+  $('msNote').textContent = hitCount ? `${hitCount} hit · last ${kFmt(all[i - 1].target)} on ${dayLabel(all[i - 1].hit)}` : 'First one up';
+  const fresh = Number.isFinite(msSeen) && hitCount > msSeen;
+  // Show every hit milestone, the live one, and one locked one ahead.
+  $('msLadder').innerHTML = all.slice(0, i + 2).map((m, j) => {
+    const state = m.hit ? 'hit' : j === i ? 'live' : 'locked';
+    const sub = m.hit ? `✓ ${dayLabel(m.hit)}` : j === i ? `${(progress * 100).toFixed(0)}% there` : 'Locked';
+    return `<div class="ms ${state} ${fresh && m.hit && j >= msSeen ? 'new' : ''}"><div class="ms-v mono">${kFmt(m.target)}</div><div class="ms-s">${sub}</div></div>`;
+  }).join('');
+  if (hitCount !== msSeen) { msSeen = hitCount; try { localStorage.setItem('pnl:msHit', String(hitCount)); } catch {} }
 }
 
 function renderRecords() {
@@ -188,7 +228,7 @@ function renderRecords() {
 }
 
 function renderAccounts() {
-  const list = S.accounts;
+  const list = byValue(S.accounts);
   $('acctCount').textContent = `${list.filter((a) => a.status === 'ok').length}/${list.filter((a) => a.status !== 'setup').length} live`;
   $('accounts').innerHTML = list.map((a) => `
     <div class="acct">
@@ -198,11 +238,13 @@ function renderAccounts() {
       ${a.status === 'error' ? `<div class="err">${esc(a.error)}</div>` : a.status === 'setup' ? `<div class="err muted">Not set up yet · <a href="#" data-open-setup>add keys</a></div>` : ''}
     </div>`).join('');
 }
+// Richest account first; ones with no value yet (not set up, erroring) go last in setup order.
+const byValue = (list) => [...list].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity));
 const dotCls = (a) => (a.status === 'setup' ? 'off' : a.status === 'error' ? (a.value != null ? 'stale' : 'err') : a.status === 'pending' ? 'stale' : '');
 
 // ---------- positions ----------
 function renderStatus() {
-  $('statusStrip').innerHTML = S.accounts.map((a) => `
+  $('statusStrip').innerHTML = byValue(S.accounts).map((a) => `
     <div><div class="k"><span class="dot ${dotCls(a)}"></span>${esc(a.name)}</div>
     <div class="v">${a.value == null ? '—' : money(a.value)}</div>
     <div class="t">${a.status === 'setup' ? 'not set up' : a.status === 'error' ? (a.value != null ? 'stale · retrying' : 'error · retrying') : a.updatedAt ? 'updated ' + timeStr(a.updatedAt) : 'connecting…'}</div></div>`).join('');

@@ -105,6 +105,7 @@ Everything the setup screen does is plain files, so you can also copy `accounts.
 | `historyStart` | Where streaks, win rate and the calendar start |
 | `tradesFrom` | How far back trades are pulled for cost basis |
 | `costBasis` | Average-price overrides, e.g. `{ "BTC": 60000 }` |
+| `milestones` | NAV goals for the Today tab, e.g. `[75000, 100000, 150000, 200000]` (the default); past the last one it keeps going in the same step |
 | `dustUsd` | Hide wallet balances worth less than this (default 1) |
 | `excludeCash` (Coinbase) | Leave Coinbase USD/USDC out of the portfolio |
 | `tokens` (wallets) | Token contracts to read on chains without free token discovery (BNB Chain, Robinhood Chain) |
