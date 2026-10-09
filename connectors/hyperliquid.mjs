@@ -102,10 +102,14 @@ export async function fetchAccount(acct) {
     positions,
     trades: trades.map((f) => {
       const spotFill = f.coin.startsWith('@') || f.coin.includes('/');
+      // Aggregated fills keep the first piece's dir, so a reversal reads "Close Long".
+      const start = num(f.startPosition), after = start + (f.side === 'B' ? 1 : -1) * num(f.sz);
+      const dir = !spotFill && start && after && Math.sign(start) !== Math.sign(after)
+        ? (start > 0 ? 'Long > Short' : 'Short > Long') : f.dir;
       return {
         ext_id: `hl:${f.tid}`, ts: f.time, venue: 'Hyperliquid', symbol: f.coin, side: f.side === 'B' ? 'BUY' : 'SELL',
         size: num(f.sz), price: num(f.px), notional: num(f.sz) * num(f.px), fee: num(f.fee),
-        closed_pnl: num(f.closedPnl), start_pos: num(f.startPosition), dir: f.dir, kind: spotFill ? 'spot' : 'perp',
+        closed_pnl: num(f.closedPnl), start_pos: start, dir, kind: spotFill ? 'spot' : 'perp',
       };
     }),
   };
