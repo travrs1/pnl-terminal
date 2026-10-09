@@ -68,8 +68,10 @@ async function fromApi(token, acct) {
   const accounts = await fetchJson('https://api.schwabapi.com/trader/v1/accounts?fields=positions', { headers: { authorization: `Bearer ${token}` } });
   let value = 0;
   const positions = [];
-  for (const { securitiesAccount: sa } of accounts ?? []) {
-    if (acct.accountNumbers && !acct.accountNumbers.includes(sa.accountNumber)) continue;
+  const list = (accounts ?? []).filter(({ securitiesAccount: sa }) => !acct.accountNumbers || acct.accountNumbers.includes(sa.accountNumber));
+  for (const { securitiesAccount: sa } of list) {
+    // With several Schwab accounts, tag each leg so lots of the same stock can be told apart.
+    const venue = list.length > 1 ? `Schwab ···${String(sa.accountNumber).slice(-3)}` : 'Schwab';
     value += num(sa.currentBalances?.liquidationValue);
     for (const p of sa.positions ?? []) {
       const ins = p.instrument ?? {};
@@ -81,7 +83,7 @@ async function fromApi(token, acct) {
       const mv = num(p.marketValue);
       positions.push({
         key: `${isOpt ? 'option' : 'stock'}:${ins.symbol}`, symbol: isOpt ? ins.underlyingSymbol || ins.symbol : ins.symbol,
-        name: isOpt ? ins.description : ins.description || ins.symbol, kind: isOpt ? 'option' : 'stock', venue: 'Schwab',
+        name: isOpt ? ins.description : ins.description || ins.symbol, kind: isOpt ? 'option' : 'stock', venue,
         side: short ? 'SHORT' : 'LONG', qty, avg: num(p.averagePrice), price: Math.abs(mv) / qty / (isOpt ? 100 : 1), value: mv,
         upnl: p.longOpenProfitLoss != null || p.shortOpenProfitLoss != null ? num(p.longOpenProfitLoss) + num(p.shortOpenProfitLoss) : null,
         today: num(p.currentDayProfitLoss), contrib: mv,

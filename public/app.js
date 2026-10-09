@@ -211,6 +211,14 @@ function renderStatus() {
 
 const kindLabel = { crypto: 'Crypto', perp: 'Perps', stock: 'Stock', option: 'Option', cash: 'Cash' };
 
+// Qty-weighted avg cost and price across legs, when they're the same kind and side
+// (e.g. one stock held in several accounts). Mixed legs like spot + perp aren't averaged.
+function blended(legs) {
+  if (legs.length < 2 || legs.some((l) => l.kind !== legs[0].kind || l.side !== legs[0].side || !l.qty || l.avg == null || l.price == null)) return null;
+  const qty = legs.reduce((s, l) => s + l.qty, 0);
+  return { avg: legs.reduce((s, l) => s + l.avg * l.qty, 0) / qty, price: legs.reduce((s, l) => s + l.price * l.qty, 0) / qty };
+}
+
 function renderBook() {
   let html = '';
   let total = 0, totalToday = 0, totalUpnl = 0;
@@ -219,13 +227,15 @@ function renderBook() {
     const one = r.legs.length === 1 ? r.legs[0] : null;
     const kinds = [...new Set(r.legs.map((l) => kindLabel[l.kind] ?? l.kind))];
     const side = r.legs.some((l) => l.side === 'SHORT') ? (r.legs.every((l) => l.side === 'SHORT') ? 'SHORT' : 'MIXED') : 'LONG';
-    const sub = one ? `${kindLabel[one.kind] ?? one.kind} · <span class="venue">${esc(one.venue)}</span>` : `${r.legs.length} positions`;
+    const sub = one ? `${kindLabel[one.kind] ?? one.kind} · <span class="venue">${esc(one.venue)}</span>`
+      : `${r.legs.length} positions${r.legs.every((l) => l.kind === r.legs[0].kind && l.qty) ? ` · ${qtyFmt.format(r.legs.reduce((s, l) => s + l.qty, 0))}` : ''}`;
     const isCash = r.symbol === 'Cash';
+    const avg = blended(r.legs);
     html += `<tr class="main" data-sym="${esc(r.symbol)}">
       <td><span class="idx">${String(i + 1).padStart(2, '0')}</span><span class="tk">${esc(r.symbol)}</span>
         <div class="tags" style="margin-left:34px">${isCash ? '' : `<span class="tag ${side === 'SHORT' ? 'short' : 'long'}">${side}</span>`}${isCash ? sub : sub}</div></td>
-      <td class="r muted">${one ? price(one.avg) : ''}</td>
-      <td class="r">${one ? price(one.price) : ''}</td>
+      <td class="r muted">${one ? price(one.avg) : avg ? price(avg.avg) : ''}</td>
+      <td class="r">${one ? price(one.price) : avg ? price(avg.price) : ''}</td>
       <td class="r">${money(r.exposure)}</td>
       <td class="r ${cls(r.today)}">${isCash ? '' : money(r.today, { sign: true })}</td>
       <td class="r ${cls(r.upnl)}">${r.hasUpnl ? money(r.upnl, { sign: true }) : ''}</td></tr>`;
