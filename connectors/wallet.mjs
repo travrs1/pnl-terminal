@@ -177,7 +177,10 @@ export async function fetchAccount(acct, cfg) {
     const k = `crypto:${h.symbol}`;
     const label = h.chain === 'solana' ? 'Solana' : h.chain === 'bitcoin' ? 'Bitcoin' : CHAIN_LABEL[h.chain];
     const cur = merged.get(k);
-    if (cur) { cur.qty += h.qty; cur.value += h.qty * h.price; if (!cur.chains.includes(label)) cur.chains.push(label); }
+    if (cur) {
+      cur.qty += h.qty; cur.value += h.qty * h.price; cur.price = cur.value / cur.qty; // blended across chains
+      if (!cur.chains.includes(label)) cur.chains.push(label);
+    }
     else merged.set(k, { key: k, symbol: h.symbol, name: h.name, kind: 'crypto', side: 'LONG', qty: h.qty, price: h.price, value: h.qty * h.price, chains: [label], mint: h.mint });
   }
   const positions = [...merged.values()].map((p) => ({

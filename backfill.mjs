@@ -348,7 +348,9 @@ async function hyperliquidDaily(acct) {
       const open = prev?.value ?? value;
       db.raw.prepare('INSERT OR REPLACE INTO daily (day, account, open, close, close_ts) VALUES (?, ?, ?, ?, ?)').run(d, acct.id, open, value, end);
       const flow = prev ? (value - prev.value) - (pnl - prev.pnl) : 0;
-      if (Math.abs(flow) >= 1) db.addFlow({ ts: end, day: d, account: acct.id, amount: flow, note: 'Hyperliquid deposit/withdrawal', source: 'hyperliquid', ext_id: `hl-day:${d}` });
+      // The live connector books deposits from Hyperliquid's ledger; don't count them twice.
+      const booked = db.raw.prepare("SELECT 1 FROM flows WHERE account = ? AND day = ? AND ext_id LIKE 'hl-ledger:%'").get(acct.id, d);
+      if (Math.abs(flow) >= 1 && !booked) db.addFlow({ ts: end, day: d, account: acct.id, amount: flow, note: 'Hyperliquid deposit/withdrawal', source: 'hyperliquid', ext_id: `hl-day:${d}` });
       n++;
     }
     if (value > 0 || prev) prev = { value, pnl }; // nothing before the account was funded
@@ -443,6 +445,10 @@ async function relay(reqs) {
 // ---------------------------------------------------------------- run
 if (process.argv[2] === 'reclassify') { reclassify(); await disambiguate(); process.exit(0); }
 log(`Backfilling from ${new Date(START).toDateString()}`);
+// Rows are rewritten in stages (raw chain rows, then Relay, then reclassify), so the trade
+// table is briefly inconsistent; the engine keeps its last stats while this flag is set.
+db.setMeta('backfill:running', String(Date.now()));
+process.on('exit', () => { try { db.setMeta('backfill:running', ''); } catch { /* closing */ } });
 let relayReqs = [];
 try { relayReqs = await loadRelay(); } catch (e) { log(`Relay: FAILED — ${e.message}`); }
 for (const acct of cfg.accounts) {

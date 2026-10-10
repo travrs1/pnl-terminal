@@ -220,9 +220,10 @@ async function solana(acct, addr) {
       if (usd < 1) continue;
       const cb = seenTx.get(tx.sig.toLowerCase());
       if (cb) {
-        cb.e.pendingFlow = null; // Coinbase ↔ this wallet: internal…
-        // …unless Coinbase cash is excluded: USDC going back to Coinbase leaves the portfolio.
+        // Coinbase ↔ this wallet: internal… unless Coinbase cash is excluded: then USDC
+        // arriving from Coinbase is new money (keep Coinbase's flow), and USDC going back leaves.
         const cbAcct = cfg.accounts.find((a) => a.id === cb.account);
+        if (!(cbAcct?.excludeCash && QUOTES[q.mint] === 'USDC' && q.d > 0)) cb.e.pendingFlow = null;
         if (cbAcct?.excludeCash && QUOTES[q.mint] === 'USDC' && q.d < 0) flows.push({ ts: tx.ts, account: acct.id, amount: -usd, note: 'USDC to Coinbase cash', ext_id: `rb:sol:${tx.sig}` });
         continue;
       }
