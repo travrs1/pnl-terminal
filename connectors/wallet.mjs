@@ -62,7 +62,7 @@ async function rpcChain(addr, chain, tokens, dust) {
   const px = held.length ? await dexPrices(chain, held.map((t) => t.address)) : {};
   for (const t of held) {
     const p = px[t.address.toLowerCase()];
-    out.push({ symbol: t.symbol || p?.symbol || t.address.slice(0, 6), name: p?.name ?? t.symbol, qty: Number(t.raw) / 10 ** (t.decimals ?? 18), price: p?.price ?? 0, chain });
+    out.push({ symbol: t.symbol || p?.symbol || t.address.slice(0, 6), name: p?.name ?? t.symbol, qty: Number(t.raw) / 10 ** (t.decimals ?? 18), price: p?.price ?? 0, chain, address: t.address });
   }
   return out.filter((x) => x.qty * x.price >= dust);
 }
@@ -87,7 +87,7 @@ async function evm(addr, chain, dust) {
     const tk = t.token ?? {};
     if (tk.type !== 'ERC-20' || !tk.exchange_rate || tk.reputation === 'scam') continue;
     const qty = num(t.value) / 10 ** num(tk.decimals || 18);
-    out.push({ symbol: tk.symbol, name: tk.name, qty, price: num(tk.exchange_rate), chain });
+    out.push({ symbol: tk.symbol, name: tk.name, qty, price: num(tk.exchange_rate), chain, address: tk.address_hash ?? tk.address });
   }
   return out.filter((x) => x.qty * x.price >= dust);
 }
@@ -180,8 +180,10 @@ export async function fetchAccount(acct, cfg) {
     if (cur) {
       cur.qty += h.qty; cur.value += h.qty * h.price; cur.price = cur.value / cur.qty; // blended across chains
       if (!cur.chains.includes(label)) cur.chains.push(label);
+      cur.token = null; // blended across chains: no single pool to price it from
     }
-    else merged.set(k, { key: k, symbol: h.symbol, name: h.name, kind: 'crypto', side: 'LONG', qty: h.qty, price: h.price, value: h.qty * h.price, chains: [label], mint: h.mint });
+    else merged.set(k, { key: k, symbol: h.symbol, name: h.name, kind: 'crypto', side: 'LONG', qty: h.qty, price: h.price, value: h.qty * h.price, chains: [label], mint: h.mint,
+      token: h.mint || h.address ? { chain: h.chain, address: h.mint || h.address } : null });
   }
   const positions = [...merged.values()].map((p) => ({
     ...p, venue: `${acct.name} · ${p.chains.join('/')}`, avg: null, upnl: null, contrib: p.value,

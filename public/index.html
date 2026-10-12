@@ -78,6 +78,15 @@
       </div>
 
       <div class="section-rule">
+        <div class="row-between"><h3>Top trades today</h3><span class="mono muted small" id="topNote"></span></div>
+        <div class="table-scroll"><table class="book top-trades">
+          <thead><tr><th>Position</th><th>Where</th><th class="r">Made today</th><th class="r">%</th></tr></thead>
+          <tbody id="topBody"></tbody>
+        </table></div>
+        <div class="fine">Every position ranked by money made since midnight: units held at midnight move from the midnight price, anything bought or sold today counts from its fill price, fees included. Rows add up to today's PnL.</div>
+      </div>
+
+      <div class="section-rule">
         <div class="row-between">
           <h3>Win rate</h3>
           <div id="winText" class="mono win-text"></div>

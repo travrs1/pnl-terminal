@@ -93,7 +93,7 @@ h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; font-we
 .closed-trades th.sorted::after { content: ' ▾'; }
 .closed-trades th.sorted.asc::after { content: ' ▴'; }
 .closed-trades td { font-size: 15px; }
-.closed-trades .venue-cell { font-family: var(--sans); color: var(--blue); font-size: 13px; white-space: normal; max-width: 260px; }
+.closed-trades .venue-cell, .top-trades .venue-cell { font-family: var(--sans); color: var(--blue); font-size: 13px; white-space: normal; max-width: 260px; }
 .est-tag { font: 600 10px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; margin-left: 6px; }
 .since { font-size: 21px; color: var(--muted); margin-top: 18px; }
 .since b { font-family: var(--mono); }
@@ -153,6 +153,8 @@ table.book { width: 100%; border-collapse: collapse; font-size: 16px; }
 .tag { font: 700 11px var(--mono); padding: 2px 6px; border-radius: 4px; }
 .tag.long { background: var(--green-bg); color: var(--green); }
 .tag.short { background: var(--pink-bg); color: var(--pink); }
+.tag.closed { background: var(--line); color: var(--muted); }
+.top-trades { margin-top: 18px; }
 .venue { color: var(--blue); }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; margin-top: 36px; align-items: start; }
 .exposure { margin-top: 18px; border-top: 1px solid var(--line); }
@@ -256,7 +258,7 @@ input, select { background: var(--bg); border: 1px solid var(--line); color: var
 .closed-trades th.sorted::after { content: ' ▾'; }
 .closed-trades th.sorted.asc::after { content: ' ▴'; }
 .closed-trades td { font-size: 15px; }
-.closed-trades .venue-cell { font-family: var(--sans); color: var(--blue); font-size: 13px; white-space: normal; max-width: 260px; }
+.closed-trades .venue-cell, .top-trades .venue-cell { font-family: var(--sans); color: var(--blue); font-size: 13px; white-space: normal; max-width: 260px; }
 .est-tag { font: 600 10px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; margin-left: 6px; }
 .since { font-size: 16px; }
   .flow-form { grid-template-columns: 1fr; }

@@ -89,7 +89,7 @@ function render() {
   $('welcome').hidden = !S.needsSetup;
   $('acctBtn').hidden = S.demo;
   renderHero();
-  if (ui.tab === 'today') { renderMilestones(); renderPnl(); renderRecords(); renderAccounts(); }
+  if (ui.tab === 'today') { renderMilestones(); renderPnl(); renderTopTrades(); renderRecords(); renderAccounts(); }
   if (ui.tab === 'positions') { renderStatus(); renderBook(); renderExposure(); renderChart(); renderFeed(); }
   if (ui.tab === 'trades') renderTrades();
   if (ui.tab === 'history') { renderCalendar(); renderDays(); }
@@ -164,6 +164,24 @@ function renderPnl() {
     return `<tr><td>${esc(a.name)}</td><td class="r">${money(a.value)}</td><td class="r ${cls(a.today)}">${money(a.today, { sign: true })}</td>
       <td class="r ${cls(un)}">${un == null ? '<span class="muted">—</span>' : money(un, { sign: true })}</td></tr>`;
   }).join('') + `<tr class="total"><td>Total</td><td class="r">${money(S.nav)}</td><td class="r ${cls(S.todayPnl)}">${money(S.todayPnl, { sign: true })}</td><td class="r ${cls(u.total)}">${money(u.total, { sign: true })}</td></tr>`;
+}
+
+// ---------- top trades today ----------
+// One row per position, ranked by PnL since midnight (from the server, so rows add up
+// to the day's total). Closed = sold out today; its row is today's part of the trade.
+function renderTopTrades() {
+  const names = Object.fromEntries(S.accounts.map((a) => [a.id, a.name]));
+  const rows = (S.movers ?? []).filter((r) => Math.abs(r.today) >= 0.5);
+  const won = rows.filter((r) => r.today > 0).length;
+  $('topNote').textContent = rows.length ? `${rows.length} positions · ${won} green · ${rows.length - won} red` : '';
+  $('topBody').innerHTML = rows.map((r, i) => `<tr>
+      <td><span class="idx">${String(i + 1).padStart(2, '0')}</span><span class="tk">${esc(r.symbol)}</span>
+        <div class="tags" style="margin-left:34px">${r.closed ? '<span class="tag closed">CLOSED</span>'
+          : `<span class="tag ${r.side === 'SHORT' ? 'short' : 'long'}">${r.side ?? 'LONG'}</span>`}<span>${kindLabel[r.kind] ?? r.kind}</span></div></td>
+      <td class="venue-cell">${esc(r.venue || names[r.account] || r.account)}</td>
+      <td class="r ${cls(r.today)}">${money(r.today, { sign: true })}</td>
+      <td class="r ${cls(r.today)}">${r.pct != null ? pct(r.pct) : ''}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="empty">No moves yet today.</td></tr>';
 }
 
 // ---------- milestones ----------
