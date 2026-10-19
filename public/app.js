@@ -89,7 +89,7 @@ function render() {
   $('welcome').hidden = !S.needsSetup;
   $('acctBtn').hidden = S.demo;
   renderHero();
-  if (ui.tab === 'today') { renderMilestones(); renderPnl(); renderTopTrades(); renderRecords(); renderAccounts(); }
+  if (ui.tab === 'today') { renderMilestones(); renderLoans(); renderPnl(); renderTopTrades(); renderRecords(); renderAccounts(); }
   if (ui.tab === 'positions') { renderStatus(); renderBook(); renderExposure(); renderChart(); renderFeed(); }
   if (ui.tab === 'trades') renderTrades();
   if (ui.tab === 'history') { renderCalendar(); renderDays(); }
@@ -176,7 +176,7 @@ function renderTopTrades() {
   $('topNote').textContent = rows.length ? `${rows.length} positions · ${won} green · ${rows.length - won} red` : '';
   $('topBody').innerHTML = rows.map((r, i) => `<tr>
       <td><span class="idx">${String(i + 1).padStart(2, '0')}</span><span class="tk">${esc(r.symbol)}</span>
-        <div class="tags" style="margin-left:34px">${r.closed ? '<span class="tag closed">CLOSED</span>'
+        <div class="tags" style="margin-left:34px">${r.closed ? `<span class="tag closed">CLOSED</span>${r.kind === 'perp' && r.side === 'SHORT' ? '<span class="tag short">SHORT</span>' : ''}`
           : `<span class="tag ${r.side === 'SHORT' ? 'short' : 'long'}">${r.side ?? 'LONG'}</span>`}<span>${kindLabel[r.kind] ?? r.kind}</span></div></td>
       <td class="venue-cell">${esc(r.venue || names[r.account] || r.account)}</td>
       <td class="r ${cls(r.today)}">${money(r.today, { sign: true })}</td>
@@ -223,6 +223,50 @@ function renderMilestones() {
   }).join('');
   if (hitCount !== msSeen) { msSeen = hitCount; try { localStorage.setItem('pnl:msHit', String(hitCount)); } catch {} }
 }
+
+// ---------- loan ----------
+// Debt, how close the collateral is to liquidation, and how much of the loan the trading it
+// paid for has earned back. Armed (not borrowed yet) just says what it's waiting for.
+function renderLoans() {
+  const l = S.loans?.[0];
+  $('loanSec').hidden = !l;
+  if (!l) return;
+  $('loanTitle').textContent = l.name;
+  $('loanRepay').hidden = l.status !== 'open';
+  $('loanRepay').dataset.id = l.id;
+  const card = (k, v, s, c = '') => `<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
+  if (l.status !== 'open') {
+    $('loanNote').textContent = 'Armed · not borrowed yet';
+    $('loanCards').innerHTML = card('Waiting for', 'The borrow', `Opens when ${qtyFmt.format(l.qty)} ${esc(l.symbol)} leaves Coinbase or about ${money(l.borrowed)} lands on ${esc(l.fundsName || l.fundsTo)}. It's booked as a transfer, so only the ${money(l.fee)} fee hits PnL.`);
+    $('loanPay').textContent = money(l.borrowed + l.fee);
+    $('loanPct').textContent = ''; $('loanLeft').textContent = 'to pay back once borrowed'; $('loanFill').style.width = '0%';
+    return;
+  }
+  const away = l.liqPrice ? 1 - l.liqPrice / l.px : null;
+  const risk = l.ltv >= 0.7 ? 'p' : l.ltv >= 0.55 ? 'warn' : 'g';
+  $('loanNote').textContent = `Opened ${dayLabel(new Date(l.opened).toLocaleDateString('en-CA'))} · ${(l.rate * 100).toFixed(2)}% variable${l.moved ? '' : ' · collateral still on Coinbase'}`;
+  $('loanCards').innerHTML = [
+    card('Owed', money(l.debt, { cents: true }), `${money(l.interest, { cents: true })} interest so far · ${l.repaid ? money(l.repaid) + ' repaid' : 'nothing repaid yet'}`),
+    card('Loan-to-value', `${(l.ltv * 100).toFixed(2)}%`, `${money(l.collUsd)} of ${esc(l.symbol)} locked`, risk),
+    card('Liquidation price', l.liqPrice ? price(l.liqPrice) : '—', away != null ? `${esc(l.symbol)} ${price(l.px)} · ${(away * 100).toFixed(1)}% above it` : '', away != null && away < 0.25 ? 'p' : ''),
+    card('Interest', `${money(l.debt * l.rate / 365, { cents: true })}/day`, `${money(l.interestToday, { cents: true })} so far today`),
+  ].join('');
+  const prog = Math.max(0, Math.min(1, l.repaid / (l.repaid + l.debt)));
+  $('loanPay').innerHTML = `${money(l.repaid)} <span class="muted">of ${money(l.repaid + l.debt)}</span>`;
+  $('loanPct').textContent = `${(prog * 100).toFixed(1)}%`;
+  $('loanLeft').innerHTML = `${money(l.debt)} left · ${esc(l.fundsName || l.fundsTo)} <span class="${cls(l.fundsPnl ?? 0)}">${money(l.fundsPnl, { sign: true })}</span> since the loan`;
+  $('loanFill').style.width = `${(prog * 100).toFixed(2)}%`;
+}
+
+$('loanRepay').addEventListener('click', async (e) => {
+  const l = S.loans?.find((x) => x.id === e.target.dataset.id);
+  const raw = prompt(`How much did you just pay back on ${l?.name ?? 'the loan'}? (USD, owed now ${money(l?.debt, { cents: true })})`);
+  const amount = Number(String(raw ?? '').replace(/[$,\s]/g, ''));
+  if (!raw || !(amount > 0)) return;
+  if (!confirm(`Log a ${money(amount, { cents: true })} repayment as of now?`)) return;
+  const r = await api(`/api/loan/${encodeURIComponent(l.id)}/repay`, { method: 'POST', body: JSON.stringify({ amount }) });
+  if (!r.ok) alert((await r.json().catch(() => ({}))).error || 'Could not save the repayment');
+});
 
 function renderRecords() {
   const r = S.records, t = S.trades;
@@ -592,7 +636,7 @@ function renderTrades() {
 
   $('tradesBody').innerHTML = rows.map((t) => `<tr>
       <td>${new Date(t.closed).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</td>
-      <td><span class="tk" style="font-size:16px">${esc(t.symbol)}</span>${t.kind === 'perp' ? ' <span class="tag long">PERP</span>' : ''}${t.est ? '<span class="est-tag">est.</span>' : ''}</td>
+      <td><span class="tk" style="font-size:16px">${esc(t.symbol)}</span>${t.kind === 'perp' ? ` <span class="tag ${t.side === 'SHORT' ? 'short' : 'long'}">${t.side === 'SHORT' ? 'SHORT' : 'PERP'}</span>` : ''}${t.partial ? ' <span class="tag closed">PARTIAL</span>' : ''}${t.est ? '<span class="est-tag">est.</span>' : ''}</td>
       <td class="venue-cell">${esc(t.venue || names[t.account] || t.account)}</td>
       <td class="r muted">${held(t.closed - t.opened)}</td>
       <td class="r">${money(t.cost)}</td>

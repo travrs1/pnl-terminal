@@ -14,12 +14,13 @@ import * as strike from './connectors/strike.mjs';
 import * as wallet from './connectors/wallet.mjs';
 import * as schwab from './connectors/schwab.mjs';
 import * as manual from './connectors/manual.mjs';
+import * as loan from './connectors/loan.mjs';
 import * as demo from './connectors/demo.mjs';
 
 const DEMO = process.env.DEMO === '1';
 const PORT = Number(process.env.PORT) || 4200;
 const root = new URL('.', import.meta.url);
-const CONNECTORS = { hyperliquid, coinbase, strike, wallet, schwab, manual, demo };
+const CONNECTORS = { hyperliquid, coinbase, strike, wallet, schwab, manual, loan, demo };
 const firstRun = !DEMO && !existsSync(ACCOUNTS_FILE);
 
 // Demo data is regenerated on every start.
@@ -83,7 +84,7 @@ function allowed(req) {
 }
 
 // ---------- setup screen ----------
-const ACCOUNT_TYPES = ['coinbase', 'strike', 'hyperliquid', 'wallet', 'schwab', 'manual'];
+const ACCOUNT_TYPES = ['coinbase', 'strike', 'hyperliquid', 'wallet', 'schwab', 'manual', 'loan'];
 const ONE_PER_INSTALL = ['coinbase', 'strike', 'schwab']; // their keys live in .env, one set each
 
 function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'account'; }
@@ -185,6 +186,20 @@ http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/flows/') && req.method === 'DELETE') {
       engine.delFlow(Number(url.pathname.split('/').pop()));
+      return json(res, 200, { ok: true });
+    }
+
+    // Paying a loan down: the repayment is added to accounts.json as of now; the engine books
+    // it as a transfer so the debt falls without showing as profit.
+    if (/^\/api\/loan\/[^/]+\/repay$/.test(url.pathname) && req.method === 'POST') {
+      const b = await readBody(req);
+      const amount = Math.round(Number(b.amount) * 100) / 100;
+      const acct = cfg.accounts.find((a) => a.type === 'loan' && a.id === url.pathname.split('/')[3]);
+      if (!acct) return json(res, 404, { error: 'no such loan' });
+      if (!(amount > 0)) return json(res, 400, { error: 'amount required' });
+      acct.repayments = [...(acct.repayments ?? []), { date: new Date().toISOString(), amount }];
+      saveConfig(cfg);
+      boot();
       return json(res, 200, { ok: true });
     }
 

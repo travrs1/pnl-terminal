@@ -29,6 +29,8 @@ body.neg { background: radial-gradient(1200px 500px at 35% -10%, rgba(255, 61, 1
 .small { font-size: 13px; }
 .g { color: var(--green); }
 .p { color: var(--pink); }
+.warn { color: var(--yellow); }
+.loan-head { margin-top: 26px; }
 h3 { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; margin: 0; }
 .fine { color: var(--muted); font-size: 13px; margin-top: 10px; line-height: 1.5; }
 .row-between { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }

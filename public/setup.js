@@ -18,6 +18,11 @@ const link = (href, text) => `<a href="${href}" target="_blank" rel="noopener">$
 
 // Everything the popup knows about each account type.
 const TYPES = {
+  // Set up in accounts.json, not here (connectors/loan.mjs); hidden from the picker.
+  loan: {
+    label: 'Crypto-backed loan', icon: 'LN', blurb: '', hidden: true,
+    steps: ['Edit this loan in <code>accounts.json</code>: <code>borrowed</code>, <code>fee</code>, <code>rate</code>, <code>collateral</code>, <code>fundsTo</code>, and <code>repayments</code> as you pay it down.'],
+  },
   coinbase: {
     label: 'Coinbase', icon: 'CB', blurb: 'Spot, perps and futures, through a view-only API key.', one: true,
     secrets: [
@@ -191,7 +196,7 @@ function renderWelcome() {
 function renderPicker() {
   const used = new Set(draft.accounts.map((a) => a.type));
   return `<h2>Add an account</h2><p class="muted">Pick where the money is. You can add several wallets and Hyperliquid addresses.</p>
-    <div class="s-types">${Object.entries(TYPES).map(([t, d]) => {
+    <div class="s-types">${Object.entries(TYPES).filter(([, d]) => !d.hidden).map(([t, d]) => {
       const off = d.one && used.has(t);
       return `<button class="s-type" data-act="add" data-type="${t}" ${off ? 'disabled' : ''}>
         <span class="s-icon lg">${esc(d.icon)}</span><b>${esc(d.label)}</b><span>${off ? 'Already added' : esc(d.blurb)}</span></button>`;
