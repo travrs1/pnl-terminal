@@ -418,7 +418,7 @@ function renderFeed() {
     const buy = t.side === 'BUY' || t.side === 'RECEIVE';
     const xfer = t.kind === 'transfer';
     const notional = t.notional != null ? ` · ${short(t.notional)}${t.kind === 'perp' ? ' notional' : ''}` : '';
-    const desc = `${t.dir ? esc(t.dir) + ' · ' : ''}${qtyFmt.format(t.size)}${t.price ? ' @ ' + price(t.price) : ''}${notional}${t.note ? ' · ' + esc(t.note) : ''}`;
+    const desc = `${t.dir ? esc(t.dir) + ' · ' : ''}${qtyFmt.format(t.size)}${t.price ? ' @ ' + price(t.price) : ''}${notional}${t.note ? ' · ' + esc(t.note) : ''}${t.fills > 1 ? ` · filled across ${t.fills} trades` : ''}`;
     const tag = xfer ? (buy ? 'IN' : 'OUT') : buy ? 'BUY' : 'SELL';
     html += `<div class="tr"><span class="side ${xfer ? 'xfer' : buy ? 'buy' : 'sell'}">${tag}</span><span class="sym">${esc(t.symbol)}</span>
       <span class="desc">${desc} · <span class="muted">${esc(t.venue)} ${timeStr(t.ts).slice(0, 5)}</span></span>

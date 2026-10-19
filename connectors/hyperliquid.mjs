@@ -110,6 +110,7 @@ export async function fetchAccount(acct) {
         ext_id: `hl:${f.tid}`, ts: f.time, venue: 'Hyperliquid', symbol: f.coin, side: f.side === 'B' ? 'BUY' : 'SELL',
         size: num(f.sz), price: num(f.px), notional: num(f.sz) * num(f.px), fee: num(f.fee),
         closed_pnl: num(f.closedPnl), start_pos: start, dir, kind: spotFill ? 'spot' : 'perp',
+        oid: f.oid != null ? String(f.oid) : null,
       };
     }),
   };
