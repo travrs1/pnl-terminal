@@ -637,7 +637,7 @@ function renderTrades() {
   $('tradesBody').innerHTML = rows.map((t) => `<tr>
       <td>${new Date(t.closed).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</td>
       <td><span class="tk" style="font-size:16px">${esc(t.symbol)}</span>${t.kind === 'perp' ? ` <span class="tag ${t.side === 'SHORT' ? 'short' : 'long'}">${t.side === 'SHORT' ? 'SHORT' : 'PERP'}</span>` : ''}${t.partial ? ' <span class="tag closed">PARTIAL</span>' : ''}${t.est ? '<span class="est-tag">est.</span>' : ''}</td>
-      <td class="venue-cell">${esc(t.venue || names[t.account] || t.account)}</td>
+      <td class="venue-cell">${esc(t.venue || names[t.account] || t.account)}${t.closeFills > 1 ? `<div class="muted small">filled across ${t.closeFills} trades</div>` : ''}</td>
       <td class="r muted">${held(t.closed - t.opened)}</td>
       <td class="r">${money(t.cost)}</td>
       <td class="r">${money(t.proceeds)}</td>
