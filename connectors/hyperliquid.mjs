@@ -32,6 +32,21 @@ async function abstraction(user) {
   return v ?? hit?.v ?? null;
 }
 
+// Leverage set per coin, so a closed trade's % is on the margin actually put up. Open
+// positions report it; other traded coins are looked up (activeAssetData) every 10 minutes.
+const levs = new Map();
+async function leverageFor(user, coins, positions) {
+  const now = Date.now();
+  for (const p of positions) if (p.kind === 'perp' && p.leverage) levs.set(`${user}:${p.symbol}`, { v: p.leverage, at: now });
+  await Promise.all(coins.map(async (coin) => {
+    const hit = levs.get(`${user}:${coin}`);
+    if (hit && now - hit.at < 600_000) return;
+    const d = await info({ type: 'activeAssetData', user, coin }).catch(() => null);
+    if (d?.leverage?.value) levs.set(`${user}:${coin}`, { v: num(d.leverage.value), at: now });
+  }));
+  return (coin) => levs.get(`${user}:${coin}`)?.v ?? null;
+}
+
 export async function fetchAccount(acct) {
   const user = acct.address.toLowerCase();
   const [perp, spot, px, mode] = await Promise.all([
@@ -96,6 +111,8 @@ export async function fetchAccount(acct) {
       trades = await info({ type: 'userFills', user, aggregateByTime: true });
     }
   } catch { /* fills are best-effort */ }
+  const perpCoins = [...new Set(trades.filter((f) => !f.coin.startsWith('@') && !f.coin.includes('/')).map((f) => f.coin))];
+  const lev = await leverageFor(user, perpCoins, positions);
 
   return {
     value,
@@ -111,6 +128,7 @@ export async function fetchAccount(acct) {
         size: num(f.sz), price: num(f.px), notional: num(f.sz) * num(f.px), fee: num(f.fee),
         closed_pnl: num(f.closedPnl), start_pos: start, dir, kind: spotFill ? 'spot' : 'perp',
         oid: f.oid != null ? String(f.oid) : null,
+        leverage: spotFill ? null : lev(f.coin),
       };
     }),
   };
