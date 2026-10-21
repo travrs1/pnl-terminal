@@ -45,8 +45,9 @@ async function tokenRequest(params) {
 
 // Accepts the full redirected URL (https://127.0.0.1/?code=...&session=...) or the bare code.
 export async function exchangeCode(input) {
-  let code = input.trim();
+  let code = (input ?? '').trim();
   if (code.includes('code=')) code = new URL(code).searchParams.get('code');
+  if (!code) throw new Error('No code found — paste the whole https://127.0.0.1/?code=… address');
   const r = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: env().callback });
   const now = Date.now();
   saveTokens({ ...r, access_expires_at: now + r.expires_in * 1000 - 60_000, refresh_issued_at: now });

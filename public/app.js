@@ -559,6 +559,7 @@ async function loadSchwab() {
   $('schwabSubmit').onclick = async () => {
     // A code is single-use; a second click would replace "Connected" with invalid_grant.
     if ($('schwabSubmit').disabled) return;
+    if (!$('schwabCode').value.trim()) { $('schwabMsg').textContent = 'Paste the 127.0.0.1 address first'; return; }
     $('schwabSubmit').disabled = true;
     const r = await api('/api/schwab/code', { method: 'POST', body: JSON.stringify({ code: $('schwabCode').value }) });
     $('schwabMsg').textContent = r.ok ? 'Connected ✓' : `Failed: ${(await r.json()).error}`;
