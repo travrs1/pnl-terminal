@@ -189,15 +189,19 @@ http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
 
-    // Paying a loan down: the repayment is added to accounts.json as of now; the engine books
-    // it as a transfer so the debt falls without showing as profit.
-    if (/^\/api\/loan\/[^/]+\/repay$/.test(url.pathname) && req.method === 'POST') {
+    // Paying a loan down, or borrowing more against it: added to accounts.json as of now; the
+    // engine books it as a transfer so the debt moves without showing as profit or loss.
+    if (/^\/api\/loan\/[^/]+\/(repay|draw)$/.test(url.pathname) && req.method === 'POST') {
       const b = await readBody(req);
+      const [, , , id, kind] = url.pathname.split('/');
       const amount = Math.round(Number(b.amount) * 100) / 100;
-      const acct = cfg.accounts.find((a) => a.type === 'loan' && a.id === url.pathname.split('/')[3]);
+      const fee = Math.round((Number(b.fee) || 0) * 100) / 100;
+      const acct = cfg.accounts.find((a) => a.type === 'loan' && a.id === id);
       if (!acct) return json(res, 404, { error: 'no such loan' });
-      if (!(amount > 0)) return json(res, 400, { error: 'amount required' });
-      acct.repayments = [...(acct.repayments ?? []), { date: new Date().toISOString(), amount }];
+      if (!(amount > 0) || fee < 0) return json(res, 400, { error: 'amount required' });
+      const date = new Date().toISOString();
+      if (kind === 'draw') acct.draws = [...(acct.draws ?? []), { date, amount, ...(fee ? { fee } : {}) }];
+      else acct.repayments = [...(acct.repayments ?? []), { date, amount }];
       saveConfig(cfg);
       boot();
       return json(res, 200, { ok: true });

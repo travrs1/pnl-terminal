@@ -232,8 +232,8 @@ function renderLoans() {
   $('loanSec').hidden = !l;
   if (!l) return;
   $('loanTitle').textContent = l.name;
-  $('loanRepay').hidden = l.status !== 'open';
-  $('loanRepay').dataset.id = l.id;
+  $('loanRepay').hidden = $('loanDraw').hidden = l.status !== 'open';
+  $('loanRepay').dataset.id = $('loanDraw').dataset.id = l.id;
   const card = (k, v, s, c = '') => `<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
   if (l.status !== 'open') {
     $('loanNote').textContent = 'Armed · not borrowed yet';
@@ -246,7 +246,7 @@ function renderLoans() {
   const risk = l.ltv >= 0.7 ? 'p' : l.ltv >= 0.55 ? 'warn' : 'g';
   $('loanNote').textContent = `Opened ${dayLabel(new Date(l.opened).toLocaleDateString('en-CA'))} · ${(l.rate * 100).toFixed(2)}% variable${l.moved ? '' : ' · collateral still on Coinbase'}`;
   $('loanCards').innerHTML = [
-    card('Owed', money(l.debt, { cents: true }), `${money(l.interest, { cents: true })} interest so far · ${l.repaid ? money(l.repaid) + ' repaid' : 'nothing repaid yet'}`),
+    card('Owed', money(l.debt, { cents: true }), `${money(l.borrowed)} borrowed${l.draws ? ` in ${l.draws + 1} draws` : ''} · ${money(l.interest, { cents: true })} interest · ${l.repaid ? money(l.repaid) + ' repaid' : 'nothing repaid yet'}`),
     card('Loan-to-value', `${(l.ltv * 100).toFixed(2)}%`, `${money(l.collUsd)} of ${esc(l.symbol)} locked`, risk),
     card('Liquidation price', l.liqPrice ? price(l.liqPrice) : '—', away != null ? `${esc(l.symbol)} ${price(l.px)} · ${(away * 100).toFixed(1)}% above it` : '', away != null && away < 0.25 ? 'p' : ''),
     card('Interest', `${money(l.debt * l.rate / 365, { cents: true })}/day`, `${money(l.interestToday, { cents: true })} so far today`),
@@ -266,6 +266,21 @@ $('loanRepay').addEventListener('click', async (e) => {
   if (!confirm(`Log a ${money(amount, { cents: true })} repayment as of now?`)) return;
   const r = await api(`/api/loan/${encodeURIComponent(l.id)}/repay`, { method: 'POST', body: JSON.stringify({ amount }) });
   if (!r.ok) alert((await r.json().catch(() => ({}))).error || 'Could not save the repayment');
+});
+
+$('loanDraw').addEventListener('click', async (e) => {
+  const l = S.loans?.find((x) => x.id === e.target.dataset.id);
+  const num = (raw) => Number(String(raw ?? '').replace(/[$,\s]/g, ''));
+  const raw = prompt(`How much more did you just borrow on ${l?.name ?? 'the loan'}? (USD, owed now ${money(l?.debt, { cents: true })})`);
+  const amount = num(raw);
+  if (!raw || !(amount > 0)) return;
+  const feeRaw = prompt(`Fee added to the debt for this borrow? (USD, 0 if none)`, String(Math.round(amount * (l.fee / l.borrowed) * 100) / 100));
+  if (feeRaw == null) return;
+  const fee = num(feeRaw);
+  if (!(fee >= 0)) return;
+  if (!confirm(`Log ${money(amount, { cents: true })} borrowed${fee ? ` + ${money(fee, { cents: true })} fee` : ''} as of now?`)) return;
+  const r = await api(`/api/loan/${encodeURIComponent(l.id)}/draw`, { method: 'POST', body: JSON.stringify({ amount, fee }) });
+  if (!r.ok) alert((await r.json().catch(() => ({}))).error || 'Could not save the borrow');
 });
 
 function renderRecords() {

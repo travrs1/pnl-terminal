@@ -11,7 +11,8 @@ export const interval = 15_000;
 const YEAR = 365 * 864e5;
 
 // Owed at `ts`: borrowed + fee, compounding continuously at `rate` (Morpho accrues every
-// block), less repayments. `owed: { amount, date }` resyncs to the figure Coinbase shows.
+// block), plus later borrows (`draws`, each with its own fee), less repayments.
+// `owed: { amount, date }` resyncs to the figure Coinbase shows.
 export function debtAt(acct, openedTs, ts) {
   const rate = Number(acct.rate) || 0;
   let at = openedTs, bal = Number(acct.borrowed) + (Number(acct.fee) || 0);
@@ -20,22 +21,32 @@ export function debtAt(acct, openedTs, ts) {
     bal = Number(acct.owed.amount);
   }
   const grow = (to) => { if (to > at) { bal *= Math.exp(rate * (to - at) / YEAR); at = to; } };
-  for (const r of [...(acct.repayments ?? [])].sort((a, b) => Date.parse(a.date) - Date.parse(b.date))) {
-    const t = Date.parse(r.date);
+  const moves = [
+    ...(acct.draws ?? []).map((d) => ({ date: d.date, amount: Number(d.amount) + (Number(d.fee) || 0) })),
+    ...(acct.repayments ?? []).map((r) => ({ date: r.date, amount: -Number(r.amount) })),
+  ].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  for (const m of moves) {
+    const t = Date.parse(m.date);
     if (t <= at || t > ts) continue;
     grow(t);
-    bal -= Number(r.amount);
+    bal += m.amount;
   }
   grow(ts);
   return Math.max(0, bal);
 }
+
+// Everything borrowed and every fee, the first borrow plus any `draws` since.
+export const totals = (acct) => (acct.draws ?? []).reduce(
+  (t, d) => ({ borrowed: t.borrowed + Number(d.amount), fee: t.fee + (Number(d.fee) || 0) }),
+  { borrowed: Number(acct.borrowed), fee: Number(acct.fee) || 0 },
+);
 
 export async function fetchAccount(acct, cfg, st = {}) {
   const c = acct.collateral ?? {};
   const px = await cryptoUsd(c.symbol || 'BTC');
   const info = {
     status: st.opened ? 'open' : 'armed', symbol: c.symbol || 'BTC', qty: Number(c.qty), px,
-    borrowed: Number(acct.borrowed), fee: Number(acct.fee) || 0, rate: Number(acct.rate) || 0, lltv: Number(acct.lltv) || null,
+    ...totals(acct), draws: (acct.draws ?? []).length, rate: Number(acct.rate) || 0, lltv: Number(acct.lltv) || null,
   };
   // Not borrowed yet: worth nothing, just watching for the loan to open.
   if (!st.opened) return { value: 0, positions: [], loan: info };
@@ -43,7 +54,9 @@ export async function fetchAccount(acct, cfg, st = {}) {
   const now = Date.now();
   const debt = debtAt(acct, st.opened, now);
   const dayStart = Math.max(st.opened, st.dayStart ?? now);
-  const interestToday = debt - debtAt(acct, st.opened, dayStart);
+  // Today's growth in the debt, less anything borrowed today (that's principal and fee).
+  const drawnToday = (acct.draws ?? []).filter((d) => Date.parse(d.date) > dayStart).reduce((s, d) => s + Number(d.amount) + (Number(d.fee) || 0), 0);
+  const interestToday = debt - debtAt(acct, st.opened, dayStart) - drawnToday;
   const collUsd = info.qty * px;
   const positions = [];
   if (st.moved) {
