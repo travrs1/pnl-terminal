@@ -46,6 +46,12 @@ Just want to look around first? Run `npm run demo` for fake data.
 
 **Never paste a seed phrase or private wallet key.** Nothing here needs one. Exchange keys only need read/view permission. Don't give them trade or withdraw access.
 
+## Review tab
+
+**Review** grades each day of Hyperliquid perp trading. Every round trip (flat to flat, partial closes included) gets a letter grade from its outcome, fee drag, closest distance to liquidation, worst drawdown while open, where it entered in the prior hour's range, and whether it added to a loser or traded against a high-volume candle. The day gets the average, and **Good** / **Needs work** lists the patterns behind the grades, each with numbers from that day's fills. Click a trade for its orders and points.
+
+It covers Hyperliquid perps only for now (maker/taker, leverage and candles come from Hyperliquid's public API). Grades are rule-based, and every threshold lives in `RUBRIC` at the top of `lib/review.mjs`. To print a day as text: `node --no-warnings scripts/review-check.mjs --day 2026-10-20`.
+
 ## Keeping it running
 
 PnL history builds up while the app runs. Days it was off land on the next day it runs.
