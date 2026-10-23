@@ -22,6 +22,7 @@
       <button data-tab="today" class="active">Today</button>
       <button data-tab="positions">Positions</button>
       <button data-tab="trades">Trades</button>
+      <button data-tab="review">Review</button>
       <button data-tab="history">History</button>
       <button data-tab="settings">Settings</button>
     </nav>
@@ -168,6 +169,40 @@
         </div>
       </div>
       <p class="fine">A trade is a round trip: it opens when you buy into a token and closes when you sell back to (nearly) zero. Cost is FIFO. Cross-chain trades use Relay's USD amounts; "est." means a leg was priced at market because the venue didn't report a USD value.</p>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="tab-review" class="tab">
+      <div class="row-between">
+        <h3>Review</h3>
+        <div class="rev-ctl">
+          <button id="revPrev" class="btn ghost sm" title="Previous trading day">◀</button>
+          <span id="revDay" class="mono"></span>
+          <button id="revNext" class="btn ghost sm" title="Next trading day">▶</button>
+          <select id="revAcct" hidden></select>
+        </div>
+      </div>
+      <div id="revEmpty" class="empty" hidden></div>
+      <div id="revBody">
+        <div id="revCards" class="cards6"></div>
+        <div id="revFunding" class="fine"></div>
+        <div class="panel" style="margin-top:24px">
+          <div class="row-between panel-head"><h3>Scorecard</h3><span class="mono muted small" id="revNote"></span></div>
+          <div class="table-scroll">
+            <table class="book rev-trips">
+              <thead><tr><th>#</th><th>Trade</th><th>Time (local)</th><th class="r">Peak size</th><th class="r">Entry → Exit</th>
+                <th class="r">PnL</th><th class="r">Fees</th><th class="r">Net</th><th class="r">Grade</th></tr></thead>
+              <tbody id="revTrips"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="panel"><h3>Good</h3><ul id="revGood" class="rev-list good"></ul></div>
+          <div class="panel"><h3>Needs work</h3><ul id="revBad" class="rev-list bad"></ul></div>
+        </div>
+        <div id="revBottom" class="rev-bottom"></div>
+      </div>
+      <p class="fine">Grades are rule-based and describe process and risk, not predictions. Not financial advice.</p>
     </section>
 
     <!-- HISTORY -->

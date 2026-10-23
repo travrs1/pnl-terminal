@@ -370,3 +370,32 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   .welcome, .setup-panel { flex-direction: column; align-items: flex-start; }
   .setup-foot { flex-direction: column; align-items: stretch; }
 }
+
+/* review */
+.rev-ctl { display: flex; align-items: center; gap: 10px; }
+.rev-ctl #revDay { min-width: 112px; text-align: center; font-size: 15px; }
+.rev-ctl select { padding: 7px 10px; }
+#revCards .card .s { font-size: 13px; }
+.grade { display: inline-block; min-width: 34px; text-align: center; font: 800 14px var(--mono); padding: 3px 6px; border-radius: 4px; background: var(--line); color: var(--muted); }
+.grade.g { background: var(--green-bg); color: var(--green); }
+.grade.p { background: var(--pink-bg); color: var(--pink); }
+.card .v .grade { font-size: inherit; padding: 0 8px; }
+.card .v .grade + small { font-size: 14px; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+.rev-trips td { font-size: 14px; }
+.rev-trips .warn-tag { color: var(--pink); font: 600 12px var(--mono); margin-left: 8px; }
+.rev-trips tr.detail td { white-space: normal; background: var(--panel-2); color: var(--muted); font-size: 13px; padding: 14px 18px; }
+.rev-detail { display: grid; grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr); gap: 28px; }
+.rev-detail table { width: 100%; border-collapse: collapse; }
+.rev-detail th, .rev-detail td { padding: 5px 8px; border: 0; text-align: left; font: 12px var(--mono); background: none !important; white-space: nowrap; }
+.rev-detail th { color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.rev-detail .r { text-align: right; }
+.rev-list { list-style: none; padding: 0; margin: 16px 0 0; }
+.rev-list li { padding: 11px 0 11px 18px; border-bottom: 1px solid var(--line-2); font-size: 15px; line-height: 1.45; position: relative; }
+.rev-list li::before { content: '•'; position: absolute; left: 2px; color: var(--muted); }
+.rev-list.good li::before { color: var(--green); }
+.rev-list.bad li::before { color: var(--pink); }
+.rev-list .more { color: var(--accent); cursor: pointer; background: none; border: 0; font: 13px var(--sans); padding: 10px 0 0; }
+.rev-bottom { margin-top: 28px; font-size: 18px; line-height: 1.5; }
+.rev-bottom b { color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; font-size: 13px; margin-right: 10px; }
+.cell[data-day] { cursor: pointer; }
+@media (max-width: 1100px) { .rev-detail { grid-template-columns: 1fr; } }

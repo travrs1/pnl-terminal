@@ -7,6 +7,8 @@ import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { openDb } from './lib/db.mjs';
 import { createEngine } from './lib/engine.mjs';
+import { buildReview, tradingDays } from './lib/review.mjs';
+import { dayKey } from './lib/util.mjs';
 import { loadConfig, saveConfig, saveSecrets, secretStatus, withSecrets, localTz, ACCOUNTS_FILE, SECRET_KEYS } from './lib/config.mjs';
 import * as hyperliquid from './connectors/hyperliquid.mjs';
 import * as coinbase from './connectors/coinbase.mjs';
@@ -126,6 +128,25 @@ async function testAccount(account, secrets, settings) {
   return { value: res.value, positions: res.positions?.length ?? 0, top };
 }
 
+// Review tab: built on request (it fetches candles), kept 60s for today and until restart for past days.
+const reviews = new Map();
+async function review(accountId, day) {
+  const hlAccts = cfg.accounts.filter((a) => a.type === 'hyperliquid');
+  const acct = accountId ? hlAccts.find((a) => a.id === accountId) : hlAccts[0];
+  if (accountId && !acct) throw Object.assign(new Error('unknown Hyperliquid account'), { status: 400 });
+  const today = dayKey(Date.now(), cfg.timezone);
+  day ||= today;
+  if (day > today) throw Object.assign(new Error('day is in the future'), { status: 400 });
+  const accounts = hlAccts.map((a) => ({ id: a.id, name: a.name }));
+  if (!acct) return { day, today, account: null, accounts, days: [], trips: [], good: [], needsWork: [], goodMore: [], needsWorkMore: [], cards: null };
+  const days = tradingDays(db, acct.id, cfg.timezone);
+  const key = `${acct.id}:${day}`, hit = reviews.get(key);
+  if (hit && (day !== today || Date.now() - hit.at < 60_000)) return { ...hit.v, today, accounts, days };
+  const v = await buildReview({ db, cfg, account: acct, day });
+  reviews.set(key, { at: Date.now(), v });
+  return { ...v, today, accounts, days };
+}
+
 function friendlyError(msg) {
   if (/^40[13]\b/.test(msg)) return `The venue rejected this key (${msg.slice(0, 3)}). Check it was copied in full and has read permission.`;
   if (/^429\b/.test(msg)) return 'Rate-limited by the venue. Wait a minute and try again.';
@@ -139,6 +160,17 @@ http.createServer(async (req, res) => {
     if (!allowed(req)) return json(res, 403, { error: 'forbidden' });
 
     if (url.pathname === '/api/state') return json(res, 200, state());
+
+    if (url.pathname === '/api/review') {
+      const day = url.searchParams.get('day');
+      if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return json(res, 400, { error: 'day must be YYYY-MM-DD' });
+      try {
+        return json(res, 200, await review(url.searchParams.get('account'), day));
+      } catch (e) {
+        if (e.status) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+    }
 
     if (url.pathname === '/api/stream') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });

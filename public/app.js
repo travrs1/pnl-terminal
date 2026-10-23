@@ -92,6 +92,7 @@ function render() {
   if (ui.tab === 'today') { renderMilestones(); renderLoans(); renderPnl(); renderTopTrades(); renderRecords(); renderAccounts(); }
   if (ui.tab === 'positions') { renderStatus(); renderBook(); renderExposure(); renderChart(); renderFeed(); }
   if (ui.tab === 'trades') renderTrades();
+  if (ui.tab === 'review') renderReview();
   if (ui.tab === 'history') { renderCalendar(); renderDays(); }
   if (ui.tab === 'settings') renderSettings();
 }
@@ -515,11 +516,17 @@ function renderCalendar() {
         style = `background:${rec.pnl >= 0 ? `rgba(93,252,93,${a})` : `rgba(255,61,139,${a})`};color:${a > 0.5 ? '#000' : 'var(--muted)'}`;
         tip = `data-tip="${dayLabel(key)} · ${money(rec.pnl, { sign: true })}${rec.est ? ' · estimated' : ''}"`;
       }
-      cells += `<div class="cell ${key === S.today ? 'today' : ''} ${rec?.est ? 'est' : ''}" style="${style}" ${tip}>${d}</div>`;
+      cells += `<div class="cell ${key === S.today ? 'today' : ''} ${rec?.est ? 'est' : ''}" style="${style}" ${tip}${rec ? ` data-day="${key}"` : ''}>${d}</div>`;
     }
     return `<div class="month"><h4>${m.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}<span class="mono ${cls(total)}">${short(total, { sign: true })}</span></h4><div class="month-grid">${cells}</div></div>`;
   }).join('');
 }
+
+// A day in the calendar opens it in the Review tab.
+$('calendar').addEventListener('click', (e) => {
+  const day = e.target.closest('.cell[data-day]')?.dataset.day;
+  if (day) { ui.revDay = day; setTab('review'); }
+});
 
 function renderDays() {
   $('daysBody').innerHTML = [...S.days].reverse().map((d) => `<tr><td>${dayLabel(d.day)}${d.day === S.today ? ' <span class="chip">LIVE</span>' : d.est ? ' <span class="chip est">EST</span>' : ''}</td>
@@ -660,4 +667,141 @@ function renderTrades() {
       <td class="r ${cls(t.pnl)}">${money(t.pnl, { sign: true })}</td>
       <td class="r ${cls(t.pnl)}">${t.pct != null ? pct(t.pct) : ''}</td></tr>`).join('')
     || '<tr><td colspan="8" class="empty">No closed trades match.</td></tr>';
+}
+
+// ---------- review ----------
+// From /api/review, not the stream (it pulls candles): fetched when the tab opens, the day or
+// account changes, or a new fill lands while today is shown.
+ui.revDay = null; ui.revAcct = null; ui.revOpen = new Set(); ui.revMore = false;
+let rev = null, revKey = null, revBusy = false;
+const gradeCls = (l) => (/^[AB]/.test(l) ? 'g' : /^[DF]/.test(l) ? 'p' : '');
+const hm = (ts) => new Date(ts).toLocaleTimeString('en-GB', { timeZone: S.tz, hour: '2-digit', minute: '2-digit' });
+const tzDay = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: S.tz });
+const dur = (min) => (min < 60 ? `${Math.max(1, Math.round(min))}m` : `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, '0')}m`);
+
+function renderReview() {
+  const day = ui.revDay ?? S.today;
+  const live = day === S.today ? S.trades.feed[0]?.ts ?? 0 : 0;
+  const key = `${ui.revAcct ?? ''}|${day}|${live}`;
+  if (key !== revKey && !revBusy) { revKey = key; loadReview(day); }
+}
+
+async function loadReview(day) {
+  revBusy = true;
+  if (rev?.day !== day) $('revNote').textContent = 'Loading…';
+  try {
+    const q = new URLSearchParams({ day });
+    if (ui.revAcct) q.set('account', ui.revAcct);
+    const r = await fetch(`/api/review?${q}`);
+    const body = await r.json();
+    rev = r.ok ? body : { day, error: body.error };
+  } catch (e) {
+    rev = { day, error: e.message };
+  }
+  revBusy = false;
+  drawReview();
+  if (S && ui.tab === 'review') renderReview(); // the day may have changed while this loaded
+}
+
+$('revPrev').addEventListener('click', () => { if (rev?.prev) { ui.revDay = rev.prev; ui.revOpen.clear(); ui.revMore = false; renderReview(); } });
+$('revNext').addEventListener('click', () => { if (rev?.next) { ui.revDay = rev.next; ui.revOpen.clear(); ui.revMore = false; renderReview(); } });
+$('revAcct').addEventListener('change', (e) => { ui.revAcct = e.target.value; ui.revOpen.clear(); renderReview(); });
+$('revTrips').addEventListener('click', (e) => {
+  const n = e.target.closest('tr.main')?.dataset.n;
+  if (!n) return;
+  ui.revOpen.has(n) ? ui.revOpen.delete(n) : ui.revOpen.add(n);
+  drawReview();
+});
+document.querySelector('#tab-review .two-col').addEventListener('click', (e) => {
+  if (e.target.closest('.more')) { ui.revMore = !ui.revMore; drawReview(); }
+});
+
+function drawReview() {
+  const r = rev;
+  const day = r.day;
+  // ◀ ▶ step between days that have Hyperliquid fills (and today).
+  const days = r.days ?? [];
+  r.prev = [...days].reverse().find((d) => d < day) ?? null;
+  r.next = days.find((d) => d > day) ?? (day < r.today ? r.today : null);
+  $('revPrev').disabled = !r.prev;
+  $('revNext').disabled = !r.next;
+  $('revDay').textContent = new Date(day + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  const sel = $('revAcct');
+  sel.hidden = !(r.accounts?.length > 1);
+  if (!sel.hidden) sel.innerHTML = r.accounts.map((a) => `<option value="${esc(a.id)}" ${a.id === r.account ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+
+  const empty = r.error || !r.trips?.length;
+  $('revEmpty').hidden = !empty;
+  $('revBody').hidden = empty;
+  $('revEmpty').textContent = r.error ? `Couldn't load the review: ${r.error}` : 'No Hyperliquid perp trades on this day.';
+  if (empty) { $('revNote').textContent = ''; return; }
+
+  const c = r.cards;
+  const card = (k, v, sub, cl = '') => `<div class="card"><div class="k">${k}</div><div class="v ${cl}">${v}</div><div class="s">${sub}</div></div>`;
+  const pc = (x) => (x == null ? '—' : `${Math.round(x * 100)}%`);
+  $('revCards').innerHTML = [
+    card('Day grade', c.grade ? `<span class="grade ${gradeCls(c.grade.letter)}">${c.grade.letter}</span><small>${c.grade.score}</small>` : '—',
+      c.grade ? `${c.trips} trade${c.trips === 1 ? '' : 's'} graded${c.grade.capped ? ' · capped at B: a trade got within 3% of liquidation' : ''}` : 'no closed trades yet'),
+    card('Net', c.net == null ? '—' : money(c.net, { sign: true }), `${c.net == null ? 'no closed trades' : `trades ${money(c.net - (c.funding ?? 0), { sign: true })}`} · funding ${c.funding == null ? '—' : money(c.funding, { sign: true, cents: true })}`, c.net == null ? '' : cls(c.net)),
+    card('Fees', money(c.fees), `maker ${money(c.makerFees)} / taker ${money(c.takerFees)}`),
+    card('Fee drag', pc(c.feeDrag), c.feeDrag == null ? 'no gross profit' : `of ${money(c.gross)} gross`),
+    card('Maker', pc(c.makerShare), c.makerShare == null ? 'not known for these fills' : c.saved != null ? `saved ~${money(c.saved)} vs taker` : 'of notional'),
+    card('Turnover', c.turnover == null ? '—' : `${Math.round(c.turnover)}×`, `${short(c.notional)} traded${c.dayStartValue ? ` on ${short(c.dayStartValue)}` : ''}`),
+  ].join('');
+  const notes = [`${c.orders} orders · ${c.fills} fills`];
+  if (r.candleInterval && r.candleInterval !== '1m') notes.push(`drawdown and entry range from ${r.candleInterval} candles`);
+  if (r.rates) notes.push(`fee rates ${(r.rates.maker * 100).toFixed(4)}% maker / ${(r.rates.taker * 100).toFixed(4)}% taker${r.rates.fallback ? ' (from fills)' : ''}`);
+  $('revFunding').textContent = `Funding ${r.funding == null ? 'unavailable' : `${r.funding >= 0 ? 'received' : 'paid'} ${money(Math.abs(r.funding), { cents: true })}`} · ${notes.join(' · ')}`;
+  $('revNote').textContent = `${r.trips.length} trip${r.trips.length === 1 ? '' : 's'} · click a row for its orders and points`;
+
+  const at = (ts) => (tzDay(ts) === day ? hm(ts) : `${new Date(tzDay(ts) + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} ${hm(ts)}`);
+  const px = (n) => (n == null ? '—' : usd0.format(n));
+  let html = '';
+  for (const t of r.trips) {
+    const m = t.m ?? {};
+    const adds = t.legs.filter((l) => l.kind === 'add').length;
+    const liqWarn = m.liqDist != null && m.liqDist < 0.05 ? `<span class="warn-tag">⚠ ${(m.liqDist * 100).toFixed(1)}% from liq</span>` : '';
+    html += `<tr class="main" data-n="${t.n}">
+      <td><span class="idx">${t.n}</span></td>
+      <td><span class="tk" style="font-size:16px">${esc(t.symbol)}</span> <span class="tag ${t.side === 'SHORT' ? 'short' : 'long'}">${t.side}${adds ? '+ADD' : ''}</span></td>
+      <td>${at(t.opened)} → ${t.open ? '<span class="tag closed">OPEN</span>' : at(t.closed)}</td>
+      <td class="r">${qtyFmt.format(t.peakSize)}</td>
+      <td class="r">${px(t.avgEntry)} → ${t.open ? '—' : px(t.avgExit)}</td>
+      <td class="r ${cls(t.grossPnl)}">${t.open ? '' : money(t.grossPnl, { sign: true })}</td>
+      <td class="r">${money(t.fees)}</td>
+      <td class="r ${cls(t.net)}">${t.open ? '' : money(t.net, { sign: true })}</td>
+      <td class="r">${t.grade ? `<span class="grade ${gradeCls(t.grade.letter)}">${t.grade.letter}</span>` : ''}${liqWarn}</td></tr>`;
+    if (ui.revOpen.has(String(t.n))) html += `<tr class="detail"><td colspan="9">${tripDetail(t)}</td></tr>`;
+  }
+  $('revTrips').innerHTML = html;
+
+  const list = (xs, more) => xs.map((b) => `<li>${esc(b.text)}</li>`).join('')
+    + (ui.revMore ? more.map((b) => `<li>${esc(b.text)}</li>`).join('') : '')
+    + (more.length ? `<li style="border:0;padding-left:0"><button class="more">${ui.revMore ? 'Show fewer' : `${more.length} more`}</button></li>` : '');
+  $('revGood').innerHTML = list(r.good, r.goodMore) || '<li class="muted">Nothing stood out.</li>';
+  $('revBad').innerHTML = list(r.needsWork, r.needsWorkMore) || '<li class="muted">Nothing stood out.</li>';
+  $('revBottom').innerHTML = r.bottomLine ? `<b>Bottom line</b>${esc(r.bottomLine)}` : '';
+}
+
+const POINTS = { outcome: 'Outcome', feeDrag: 'Fee drag', liqDist: 'Liquidation distance', mae: 'Drawdown (MAE)', addedToLoser: 'Added to a loser',
+  location: 'Entry location', againstMomentum: 'Against momentum', floor: 'Winner floor' };
+function tripDetail(t) {
+  const m = t.m ?? {};
+  const pc = (x, d = 1) => (x == null ? '—' : `${(x * 100).toFixed(d)}%`);
+  const legs = t.legs.map((l) => `<tr><td>${hm(l.ts)}</td><td>${l.kind}</td><td>${l.side}</td><td class="r">${qtyFmt.format(l.size)}</td>
+    <td class="r">${price(l.price)}</td><td class="r">${money(l.fee, { cents: true })}</td><td>${l.liquidity ?? '—'}${l.fills > 1 ? ` · ${l.fills} fills` : ''}</td>
+    <td class="r">${l.kind === 'open' || l.kind === 'add' ? pc(l.liqDist) : ''}</td></tr>`).join('');
+  const val = {
+    outcome: m.netPct != null ? pc(m.netPct, 2) + ' of account' : '—', feeDrag: pc(m.feeDrag, 0), liqDist: m.liqDist != null ? `min ${pc(m.liqDist)}` : 'unknown',
+    mae: m.mae != null ? `${money(m.mae)} (${pc(m.maePct)})` : 'no candles', addedToLoser: m.addedToLoser ? 'yes' : 'no',
+    location: m.location ?? 'unknown', againstMomentum: m.againstMomentum ? `yes (${hm(m.momentum.t)} candle, ${Math.round(m.momentum.volX)}× volume)` : 'no', floor: 'profitable trade',
+  };
+  const pts = t.grade ? Object.entries(t.grade.points).map(([k, v]) => `<tr><td>${POINTS[k] ?? k}</td><td>${esc(val[k] ?? '')}</td>
+    <td class="r ${v > 0 ? 'g' : v < 0 ? 'p' : ''}">${v > 0 ? '+' : ''}${v.toFixed(1)}</td></tr>`).join('')
+    + `<tr><td><b>Score</b></td><td>base 65</td><td class="r"><b>${t.grade.score.toFixed(1)}</b></td></tr>` : '';
+  return `<div class="rev-detail">
+    <div><table><thead><tr><th>Time</th><th>Leg</th><th>Side</th><th class="r">Size</th><th class="r">Avg price</th><th class="r">Fee</th><th>Liquidity</th><th class="r">Liq dist</th></tr></thead><tbody>${legs}</tbody></table>
+      <div class="fine">Held ${dur(m.heldMin ?? 0)} · best ${m.mfe != null ? money(m.mfe, { sign: true }) : '—'} · worst ${m.mae != null ? money(m.mae) : '—'} unrealized</div></div>
+    <div>${pts ? `<table><thead><tr><th>Component</th><th></th><th class="r">Points</th></tr></thead><tbody>${pts}</tbody></table>` : '<div class="fine">Still open: graded once it closes.</div>'}</div>
+  </div>`;
 }
