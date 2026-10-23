@@ -21,7 +21,7 @@ const TYPES = {
   // Set up in accounts.json, not here (connectors/loan.mjs); hidden from the picker.
   loan: {
     label: 'Crypto-backed loan', icon: 'LN', blurb: '', hidden: true,
-    steps: ['Edit this loan in <code>accounts.json</code>: <code>borrowed</code>, <code>fee</code>, <code>rate</code>, <code>collateral</code>, <code>fundsTo</code>, <code>draws</code> when you borrow more, and <code>repayments</code> as you pay it down.'],
+    steps: ['Edit this loan in <code>accounts.json</code>: <code>borrowed</code>, <code>fee</code>, <code>rate</code>, <code>collateral</code>, <code>fundsTo</code>, <code>draws</code> when you borrow more, <code>collateral.adds</code> when you lock more, and <code>repayments</code> as you pay it down (the Loan panel buttons fill these in).'],
   },
   coinbase: {
     label: 'Coinbase', icon: 'CB', blurb: 'Spot, perps and futures, through a view-only API key.', one: true,

@@ -233,8 +233,8 @@ function renderLoans() {
   $('loanSec').hidden = !l;
   if (!l) return;
   $('loanTitle').textContent = l.name;
-  $('loanRepay').hidden = $('loanDraw').hidden = l.status !== 'open';
-  $('loanRepay').dataset.id = $('loanDraw').dataset.id = l.id;
+  $('loanRepay').hidden = $('loanDraw').hidden = $('loanColl').hidden = l.status !== 'open';
+  $('loanRepay').dataset.id = $('loanDraw').dataset.id = $('loanColl').dataset.id = l.id;
   const card = (k, v, s, c = '') => `<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
   if (l.status !== 'open') {
     $('loanNote').textContent = 'Armed · not borrowed yet';
@@ -282,6 +282,16 @@ $('loanDraw').addEventListener('click', async (e) => {
   if (!confirm(`Log ${money(amount, { cents: true })} borrowed${fee ? ` + ${money(fee, { cents: true })} fee` : ''} as of now?`)) return;
   const r = await api(`/api/loan/${encodeURIComponent(l.id)}/draw`, { method: 'POST', body: JSON.stringify({ amount, fee }) });
   if (!r.ok) alert((await r.json().catch(() => ({}))).error || 'Could not save the borrow');
+});
+
+$('loanColl').addEventListener('click', async (e) => {
+  const l = S.loans?.find((x) => x.id === e.target.dataset.id);
+  const raw = prompt(`How much ${l?.symbol ?? 'BTC'} did you just add as collateral? (${qtyFmt.format(l?.qty)} locked now)`);
+  const qty = Number(String(raw ?? '').replace(/[,\s]/g, ''));
+  if (!raw || !(qty > 0)) return;
+  if (!confirm(`Add ${qtyFmt.format(qty)} ${l.symbol} as collateral (${qtyFmt.format(l.qty + qty)} locked)?`)) return;
+  const r = await api(`/api/loan/${encodeURIComponent(l.id)}/collateral`, { method: 'POST', body: JSON.stringify({ qty }) });
+  if (!r.ok) alert((await r.json().catch(() => ({}))).error || 'Could not save the collateral');
 });
 
 function renderRecords() {

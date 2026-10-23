@@ -245,6 +245,23 @@ http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
 
+    // Locking more coins against a loan: raises `collateral.qty` and logs it in
+    // `collateral.adds`, so LTV and the liquidation price follow.
+    if (/^\/api\/loan\/[^/]+\/collateral$/.test(url.pathname) && req.method === 'POST') {
+      const b = await readBody(req);
+      const id = url.pathname.split('/')[3];
+      const qty = Math.round(Number(b.qty) * 1e8) / 1e8;
+      const acct = cfg.accounts.find((a) => a.type === 'loan' && a.id === id);
+      if (!acct) return json(res, 404, { error: 'no such loan' });
+      if (!(qty > 0)) return json(res, 400, { error: 'quantity required' });
+      const c = acct.collateral ??= {};
+      c.qty = Math.round(((Number(c.qty) || 0) + qty) * 1e8) / 1e8;
+      c.adds = [...(c.adds ?? []), { date: new Date().toISOString(), qty }];
+      saveConfig(cfg);
+      boot();
+      return json(res, 200, { ok: true });
+    }
+
     if (url.pathname === '/api/jobs' && req.method === 'GET') return json(res, 200, { job, demo: DEMO });
     if (url.pathname.startsWith('/api/jobs/') && req.method === 'POST') {
       if (DEMO) return json(res, 400, { error: 'not available in demo mode' });
