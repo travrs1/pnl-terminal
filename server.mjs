@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { openDb } from './lib/db.mjs';
 import { createEngine } from './lib/engine.mjs';
-import { buildReview, tradingDays } from './lib/review.mjs';
+import { buildReview, tradingDays, saveRecentFunding } from './lib/review.mjs';
 import { dayKey } from './lib/util.mjs';
 import { loadConfig, saveConfig, saveSecrets, secretStatus, withSecrets, localTz, ACCOUNTS_FILE, SECRET_KEYS } from './lib/config.mjs';
 import * as hyperliquid from './connectors/hyperliquid.mjs';
@@ -67,6 +67,12 @@ setInterval(() => {
   if (DEMO || (job && !job.ended) || !cfg.accounts.some((a) => a.type === 'wallet')) return;
   try { runJob('auto-sync (last 2 days)', ['backfill.mjs', '--recent']); } catch { /* busy */ }
 }, 600_000).unref();
+
+// Hyperliquid only keeps funding hourly for about a week: save recent days' funding for the
+// Review tab at startup, and again every 6 hours since the server can run for weeks.
+const keepFunding = () => { if (!DEMO) saveRecentFunding(db, cfg).catch((e) => console.error('[review] funding:', e.message)); };
+keepFunding();
+setInterval(keepFunding, 6 * 3_600_000).unref();
 
 const readText = (req) => new Promise((ok) => { let s = ''; req.on('data', (c) => (s += c)); req.on('end', () => ok(s)); });
 
