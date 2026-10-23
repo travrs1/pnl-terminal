@@ -751,7 +751,7 @@ function drawReview() {
   const notes = [`${c.orders} orders · ${c.fills} fills`];
   if (r.candleInterval && r.candleInterval !== '1m') notes.push(`drawdown and entry range from ${r.candleInterval} candles`);
   if (r.rates) notes.push(`fee rates ${(r.rates.maker * 100).toFixed(4)}% maker / ${(r.rates.taker * 100).toFixed(4)}% taker${r.rates.fallback ? ' (from fills)' : ''}`);
-  $('revFunding').textContent = `Funding ${r.funding == null ? 'unavailable' : `${r.funding >= 0 ? 'received' : 'paid'} ${money(Math.abs(r.funding), { cents: true })}`} · ${notes.join(' · ')}`;
+  $('revFunding').textContent = `Funding ${r.funding == null ? 'unavailable (Hyperliquid only keeps it hourly for about a week)' : `${r.funding >= 0 ? 'received' : 'paid'} ${money(Math.abs(r.funding), { cents: true })}`} · ${notes.join(' · ')}`;
   $('revNote').textContent = `${r.trips.length} trip${r.trips.length === 1 ? '' : 's'} · click a row for its orders and points`;
 
   const at = (ts) => (tzDay(ts) === day ? hm(ts) : `${new Date(tzDay(ts) + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} ${hm(ts)}`);
