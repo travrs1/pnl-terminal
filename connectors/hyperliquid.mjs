@@ -129,6 +129,7 @@ export async function fetchAccount(acct) {
         closed_pnl: num(f.closedPnl), start_pos: start, dir, kind: spotFill ? 'spot' : 'perp',
         oid: f.oid != null ? String(f.oid) : null,
         leverage: spotFill ? null : lev(f.coin),
+        liquidity: spotFill ? null : (f.crossed ? 'taker' : 'maker'),
       };
     }),
   };
