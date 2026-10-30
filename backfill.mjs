@@ -9,6 +9,7 @@ import { postJson, dayKey, sleep, num, addDays, startOfDay } from './lib/util.mj
 import { jupTokenMeta } from './lib/prices.mjs';
 import { majorUsd, tokenUsd } from './lib/history-prices.mjs';
 import { get as coinbaseGet } from './connectors/coinbase.mjs';
+import { coinbaseTrade } from './lib/coinbase-flows.mjs';
 import { relayRequests, relayTrades, CHAIN_LABEL } from './lib/relay.mjs';
 import { walletSignatures } from './lib/solana.mjs';
 
@@ -60,37 +61,11 @@ async function coinbase(acct) {
 }
 
 function handleCoinbaseTx(acct, t, ts, trades) {
-  const cur = t.amount.currency;
-  const amt = num(t.amount.amount);
-  const usd = num(t.native_amount?.amount);
-  const base = { ext_id: `cb2:${t.id}`, ts, account: acct.id, venue: 'Coinbase', symbol: cur };
   // Deposits/withdrawals are decided by lib/coinbase-flows.mjs (live tracker + rebuild).
-  const flow = () => {};
-  switch (t.type) {
-    case 'buy':
-    case 'sell':
-    case 'trade': {
-      if (STABLES.has(cur)) return; // the cash leg of a buy/convert
-      const side = amt >= 0 ? 'BUY' : 'SELL';
-      const size = Math.abs(amt), notional = Math.abs(usd);
-      trades.push({ ...base, side, size, price: notional / size, notional, kind: 'spot', dir: t.type === 'trade' ? 'Convert' : side === 'BUY' ? 'Buy' : 'Sell' });
-      return bump('Coinbase trades');
-    }
-    case 'fiat_deposit': return flow('Bank deposit');
-    case 'fiat_withdrawal': return flow('Bank withdrawal');
-    case 'credit_card_reward':
-    case 'incentives_rewards_payout': return flow(t.type === 'credit_card_reward' ? 'Card reward' : 'Reward');
-    case 'credit_card_balance_payment': return flow('Card payment');
-    case 'send':
-    case 'receive': {
-      if (STABLES.has(cur) && Math.abs(usd) < 1) return;
-      const size = Math.abs(amt);
-      trades.push({ ...base, side: amt >= 0 ? 'RECEIVE' : 'SEND', size, price: size ? Math.abs(usd) / size : 0, notional: Math.abs(usd), kind: 'transfer',
-        dir: amt >= 0 ? 'Received' : 'Sent', note: t.details?.subtitle ?? null });
-      return bump('Coinbase transfers');
-    }
-    default: // interest, staking, advanced_trade_fill (covered by the live fills feed)…
-  }
+  const tr = coinbaseTrade(t);
+  if (!tr) return;
+  trades.push({ ...tr, ts, account: acct.id });
+  bump(tr.kind === 'transfer' ? 'Coinbase transfers' : 'Coinbase trades');
 }
 
 // ---------------------------------------------------------------- Solana

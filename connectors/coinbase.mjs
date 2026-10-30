@@ -103,9 +103,11 @@ export async function fetchAccount(acct = {}) {
 }
 
 // Money in/out since `sinceTs` (bank deposits, USDC bought with bank, card payments, rewards)
-// so the live tracker doesn't count them as PnL. Called by the engine every few minutes.
+// so the live tracker doesn't count them as PnL, plus the app buys/sells/converts for the
+// trade feed (the fills endpoint only sees Advanced Trade). Called by the engine every 10
+// minutes, and right away when holdings change.
 export async function flows(acct, cfg, sinceTs) {
-  const { coinbaseFlow } = await import('../lib/coinbase-flows.mjs');
+  const { coinbaseFlow, coinbaseTrade } = await import('../lib/coinbase-flows.mjs');
   const { data: accounts } = await get('/v2/accounts', '?limit=100');
   const txs = [];
   for (const a of accounts) {
@@ -123,7 +125,7 @@ export async function flows(acct, cfg, sinceTs) {
     const f = coinbaseFlow(t, { legs: gid ? legs.get(gid) : 1, cryptoTransfers: 'internal', excludeCash: acct.excludeCash, tracked: trackedAddrs(cfg), otherLeg: otherLeg(t, txs) });
     if (f) out.push({ ts: Date.parse(t.created_at), ...f, ext_id: `cb2:${t.id}`, source: 'coinbase' });
   }
-  return out;
+  return { flows: out, trades: txs.map(coinbaseTrade).filter(Boolean) };
 }
 
 const trackedAddrs = (cfg) => new Set(cfg.accounts.flatMap((a) => [...(a.evm ?? []), ...(a.solana ?? [])]).map((x) => x.toLowerCase()));
